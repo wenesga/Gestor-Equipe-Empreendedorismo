@@ -581,9 +581,42 @@ PAGINAS = {
 }
 
 
+def aplicar_estilo():
+    """Abas com cara de aba: borda, cantos arredondados e a ativa em destaque."""
+    st.markdown("""
+    <style>
+    div[role="tablist"] {
+        gap: 4px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+    }
+    div[role="tablist"] .react-aria-SelectionIndicator {
+        display: none;
+    }
+    div[data-testid="stTab"] {
+        background-color: rgba(128, 128, 128, 0.10);
+        border: 1px solid rgba(128, 128, 128, 0.30);
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        padding: 8px 16px;
+        margin-bottom: 0;
+    }
+    div[data-testid="stTab"]:hover {
+        background-color: rgba(46, 125, 50, 0.10);
+    }
+    div[data-testid="stTab"][aria-selected="true"] {
+        background-color: rgba(46, 125, 50, 0.14);
+        border-color: rgba(46, 125, 50, 0.55);
+        border-top: 3px solid #2e7d32;
+        font-weight: 600;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
 def main():
     st.set_page_config(page_title="Gestor de Equipe", page_icon="🤝", layout="wide")
     init_db()
+    aplicar_estilo()
     if "uid" not in st.session_state and not st.session_state.get("limpar_cookie"):
         retomar_sessao()
     if "uid" not in st.session_state:

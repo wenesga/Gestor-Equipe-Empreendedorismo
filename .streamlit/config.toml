@@ -1,0 +1,7 @@
+# Os dois temas (claro e escuro) são definidos aqui de propósito: com um
+# [theme] único o Streamlit esconde o seletor de tema do menu de três pontinhos.
+[theme.light]
+primaryColor = "#2e7d32"
+
+[theme.dark]
+primaryColor = "#43a047"
