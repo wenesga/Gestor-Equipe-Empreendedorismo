@@ -641,6 +641,13 @@ def aplicar_estilo():
     """Abas com cara de aba: borda, cantos arredondados e a ativa em destaque."""
     st.markdown("""
     <style>
+    /* Blocos invisíveis (st.iframe de 1 px com JS e o próprio <style>) ocupam uma vaga na lista
+       vertical e aparecem como um risco no topo. display:none os tira da lista; o script continua
+       rodando e o CSS continua valendo. */
+    .stElementContainer:has([data-testid="stIFrame"]),
+    .stElementContainer:has(style) {
+        display: none;
+    }
     div[role="tablist"] {
         gap: 4px;
         border-bottom: 1px solid rgba(128, 128, 128, 0.35);
