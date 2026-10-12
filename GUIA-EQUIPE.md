@@ -26,8 +26,8 @@ O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira 
 **Avaliação entre pares**
 Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você dá notas de 1 a 5 para cada colega em quatro critérios: presença, tarefas, comunicação e colaboração, com comentário opcional. As notas são anônimas. A tela mostra só a média que cada pessoa recebeu. Dá para editar sua avaliação enquanto a rodada está aberta.
 
-**Exportar**
-Baixa as tabelas em CSV (contribuições, diário e tarefas) e gera o relatório individual em PDF, com todas as contribuições da pessoa (com evidência) e as médias recebidas. O líder pode gerar o relatório de qualquer integrante; os demais, só o próprio.
+**Relatório em PDF**
+Gera o relatório individual em PDF, com todas as contribuições da pessoa (com evidência) e as médias recebidas. O líder pode gerar o relatório de qualquer integrante; os demais, só o próprio.
 
 ## Um uso típico no dia a dia
 
@@ -36,7 +36,7 @@ Baixa as tabelas em CSV (contribuições, diário e tarefas) e gera o relatório
 3. Depois de ir à comunidade, preencher o **Diário de campo**.
 4. Olhar o **Painel** para ver o andamento.
 5. Nas rodadas de avaliação, preencher a **Avaliação entre pares**.
-6. No fim, **Exportar** o relatório individual.
+6. No fim, baixar o **Relatório em PDF**.
 
 ## Onde ficam os dados
 

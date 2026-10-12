@@ -191,8 +191,6 @@ def tela_inicial():
                 esperado = (q("SELECT codigo FROM equipe WHERE id = 1")["codigo"].iloc[0] or "").lower()
                 if not nome:
                     st.error("Informe seu nome.")
-                elif not esperado:
-                    st.error("O líder ainda não definiu o código da equipe.")
                 elif codigo.lower() != esperado:
                     st.error("Código da equipe incorreto. Peça ao líder.")
                 elif not _pin_valido(pin1) or pin1 != pin2:
@@ -506,13 +504,7 @@ def relatorio_membro(mid, nome):
 
 
 def pg_exportar(u):
-    st.header("Exportar")
-    for tabela, rotulo in [("contribuicoes", "Contribuições"), ("diario", "Diário de campo"),
-                           ("tarefas", "Tarefas")]:
-        df = q(f"SELECT * FROM {tabela}")
-        st.download_button(f"{rotulo} (CSV)", df.to_csv(index=False).encode("utf-8-sig"),
-                           f"{tabela}.csv", "text/csv")
-    st.subheader("Relatório individual")
+    st.header("Relatório em PDF")
     membros = q("SELECT id, nome FROM membros WHERE ativo = 1 ORDER BY nome")
     if u["lider"]:
         escolha = st.selectbox("Integrante", membros["nome"])
@@ -531,7 +523,7 @@ PAGINAS = {
     "Minhas contribuições": pg_contribuicoes,
     "Diário de campo": pg_diario,
     "Avaliação entre pares": pg_pares,
-    "Exportar": pg_exportar,
+    "Relatório em PDF": pg_exportar,
 }
 
 
