@@ -536,9 +536,17 @@ def main():
     u = usuario()
     with st.sidebar:
         st.write(f"**{u['nome']}**" + (" (líder)" if u["lider"] else ""))
-        pagina = st.radio("Menu", list(PAGINAS))
+        st.divider()
+        pagina = st.session_state.setdefault("pagina", next(iter(PAGINAS)))
+        for nome in PAGINAS:
+            if st.button(nome, key=f"menu_{nome}", width="stretch",
+                         type="primary" if nome == pagina else "tertiary"):
+                st.session_state["pagina"] = nome
+                st.rerun()
+        st.divider()
         if st.button("Sair"):
             del st.session_state["uid"]
+            st.session_state.pop("pagina", None)
             st.rerun()
     PAGINAS[pagina](u)
 
