@@ -123,6 +123,13 @@ def salvar_arquivo(up):
     return nome
 
 
+def br(valor):
+    """'2026-10-09' -> '09/10/2026'; devolve vazio se não houver data."""
+    if not isinstance(valor, str) or len(valor) < 10:
+        return ""
+    return f"{valor[8:10]}/{valor[5:7]}/{valor[:4]}"
+
+
 def semana_atual():
     hoje = date.today().isoformat()
     atual = 1
@@ -167,7 +174,7 @@ def iniciar_sessao(membro_id):
 def retomar_sessao():
     """Reabre o login a partir do cookie, se o token ainda for válido e o integrante estiver ativo."""
     token = st.context.cookies.get(COOKIE_SESSAO)
-    if not token:
+    if not isinstance(token, str) or not token:
         return
     r = q("""SELECT s.membro_id FROM sessoes s JOIN membros m ON m.id = s.membro_id
              WHERE s.token_hash = ? AND s.expira_em > ? AND m.ativo = 1""",
@@ -178,7 +185,7 @@ def retomar_sessao():
 
 def encerrar_sessao():
     token = st.context.cookies.get(COOKIE_SESSAO)
-    if token:
+    if isinstance(token, str) and token:
         ex("DELETE FROM sessoes WHERE token_hash = ?", (hash_pin(token),))
     for chave in ("uid", "pagina"):
         st.session_state.pop(chave, None)
@@ -327,8 +334,9 @@ def pg_painel(u):
              FROM membros m LEFT JOIN contribuicoes c ON c.membro_id = m.id
              WHERE m.ativo = 1 GROUP BY m.id ORDER BY m.nome""")
     st.subheader("Contribuições por integrante")
-    st.dataframe(c.rename(columns={"nome": "Integrante", "registros": "Registros",
-                                   "horas": "Horas", "ultimo": "Último registro"}),
+    tabela = c.assign(ultimo=c["ultimo"].map(br))
+    st.dataframe(tabela.rename(columns={"nome": "Integrante", "registros": "Registros",
+                                        "horas": "Horas", "ultimo": "Último registro"}),
                  hide_index=True, width="stretch")
     if not c.empty:
         grafico_horas(c)
@@ -347,7 +355,7 @@ def pg_painel(u):
                 WHERE t.status != 'Concluída' AND t.prazo >= ? ORDER BY t.prazo LIMIT 5""",
              (date.today().isoformat(),))
     st.subheader("Próximos prazos")
-    st.dataframe(prox, hide_index=True, width="stretch")
+    st.dataframe(prox.assign(prazo=prox["prazo"].map(br)), hide_index=True, width="stretch")
 
 
 def pg_equipe(u):
@@ -421,7 +429,7 @@ def pg_cronograma(u):
     nomes = dict(zip(membros["id"], membros["nome"]))
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
     for sem in sorted(t["semana"].unique()):
-        with st.expander(f"Semana {sem} · {t[t['semana'] == sem]['prazo'].iloc[0]}",
+        with st.expander(f"Semana {sem} · {br(t[t['semana'] == sem]['prazo'].iloc[0])}",
                          expanded=(sem == semana_atual())):
             for _, r in t[t["semana"] == sem].iterrows():
                 c1, c2, c3 = st.columns([4, 2, 2])
@@ -451,7 +459,7 @@ def pg_contribuicoes(u):
     st.caption("Registre o que você fez, com evidência. É isso que comprova sua participação.")
     with st.form("contrib", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
-        d = c1.date_input("Data", date.today())
+        d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
         sem = c2.number_input("Semana", 1, 10, semana_atual())
         horas = c3.number_input("Horas", 0.0, 24.0, 1.0, 0.5)
         tipo = st.selectbox("Tipo de atividade", TIPOS_CONTRIB)
@@ -472,12 +480,13 @@ def pg_contribuicoes(u):
              FROM contribuicoes c JOIN membros m ON m.id = c.membro_id"""
     df = q(sql + ("" if ver_todos else " WHERE c.membro_id = ?") + " ORDER BY c.data DESC, c.id DESC",
            () if ver_todos else (int(u["id"]),))
-    st.dataframe(df.drop(columns=["id"]), hide_index=True, width="stretch")
+    st.dataframe(df.drop(columns=["id"]).assign(data=df["data"].map(br)), hide_index=True,
+                 width="stretch")
     meus = df[df["nome"] == u["nome"]]
     if not meus.empty:
         with st.expander("Excluir um registro meu"):
             rid = st.selectbox("Registro", meus["id"],
-                               format_func=lambda i: f"{meus[meus['id'] == i]['data'].iloc[0]} · "
+                               format_func=lambda i: f"{br(meus[meus['id'] == i]['data'].iloc[0])} · "
                                f"{meus[meus['id'] == i]['descricao'].iloc[0][:50]}")
             if st.button("Excluir"):
                 ex("DELETE FROM contribuicoes WHERE id = ? AND membro_id = ?", (int(rid), int(u["id"])))
@@ -489,7 +498,7 @@ def pg_diario(u):
     nomes = list(q("SELECT nome FROM membros WHERE ativo = 1 ORDER BY nome")["nome"])
     with st.form("diario", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
-        d = c1.date_input("Data", date.today())
+        d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
         tipo = c2.selectbox("Tipo", TIPOS_CAMPO)
         local = c3.text_input("Local / canal")
         part = st.multiselect("Integrantes presentes", nomes, default=[u["nome"]])
@@ -507,7 +516,7 @@ def pg_diario(u):
     df = q("""SELECT d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
                      d.aprendizados, d.link, d.arquivo, m.nome AS autor
               FROM diario d LEFT JOIN membros m ON m.id = d.autor_id ORDER BY d.data DESC, d.id DESC""")
-    st.dataframe(df, hide_index=True, width="stretch")
+    st.dataframe(df.assign(data=df["data"].map(br)), hide_index=True, width="stretch")
 
 
 def pg_pares(u):
