@@ -1,9 +1,12 @@
 """Relatório individual em PDF: contribuições com evidência e médias da avaliação entre pares."""
 
 from datetime import date
+from pathlib import Path
 
 from fpdf import FPDF
+from PIL import Image
 
+ARQUIVO_CABECALHO = Path(__file__).parent / "imagens" / "cabecalho.png"
 AZUL = (31, 78, 154)
 CINZA = (90, 98, 112)
 LINHA = (225, 229, 236)
@@ -19,6 +22,20 @@ def _t(texto):
 
 
 class _PDF(FPDF):
+    def header(self):
+        """
+        Timbre institucional só no topo da primeira página. pdf.image() não move o cursor, então o Y
+        inicial do conteúdo sai da proporção real do arquivo (lida com PIL). Sem o arquivo, o
+        relatório sai sem timbre.
+        """
+        if self.page_no() != 1 or not ARQUIVO_CABECALHO.exists():
+            return
+        largura = self.w - self.l_margin - self.r_margin
+        self.image(str(ARQUIVO_CABECALHO), x=self.l_margin, y=10, w=largura)
+        with Image.open(ARQUIVO_CABECALHO) as img:
+            altura = largura * img.height / img.width
+        self.set_y(10 + altura + 6)
+
     def footer(self):
         self.set_y(-12)
         self.set_font("Helvetica", "", 8)
