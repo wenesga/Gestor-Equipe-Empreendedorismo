@@ -4,6 +4,7 @@ Registra contribuições com evidência, diário de campo, cronograma das 10
 semanas e avaliação entre pares, para comprovar a participação individual.
 Persistência: SQLite (data/equipe.db) + pasta data/uploads.
 """
+import base64
 import hashlib
 import os
 import secrets
@@ -52,6 +53,9 @@ CRITERIOS = {
 DIAS_ALERTA = 14
 COOKIE_SESSAO = "gestor_sessao"
 EXT_IMAGEM = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+PASTA_IMAGENS = Path(__file__).parent / "imagens"
+ARQUIVO_LOGO = PASTA_IMAGENS / "logo_icone.png"
+ARQUIVO_BANNER = PASTA_IMAGENS / "banner.png"
 DIAS_SESSAO = 30
 MAX_MEMBROS = 6
 
@@ -150,6 +154,30 @@ def mostrar_evidencia(link, arquivo, chave):
         st.caption("Sem evidência anexada.")
 
 
+@st.cache_resource
+def banner_base64():
+    """Banner em base64 para usar como fundo em HTML; vazio se o arquivo não existir."""
+    if not ARQUIVO_BANNER.exists():
+        return ""
+    return base64.b64encode(ARQUIVO_BANNER.read_bytes()).decode()
+
+
+def mostrar_banner():
+    """Banner do topo do Painel, com o título por cima do espaço vazio do lado esquerdo."""
+    dados = banner_base64()
+    if not dados:
+        return
+    st.markdown(
+        f"""
+        <div class="banner-arte" style="background-image: url(data:image/png;base64,{dados})">
+            <p class="banner-titulo">Gestor de Equipe</p>
+            <p class="banner-subtitulo">Empreendedorismo e Inovação</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def semana_atual():
     hoje = date.today().isoformat()
     atual = 1
@@ -225,8 +253,11 @@ def _salvar_membro(nome, pin, lider):
 
 
 def tela_inicial():
-    st.title("Gestor de Equipe")
-    st.caption("Empreendedorismo e Inovação · LCOMP-EI-2026-2")
+    with st.container(key="sidebar_cabecalho"):
+        if ARQUIVO_LOGO.exists():
+            st.image(str(ARQUIVO_LOGO), width=96)
+        st.title("Gestor de Equipe")
+        st.caption("Empreendedorismo e Inovação · LCOMP-EI-2026-2")
     membros = q("SELECT * FROM membros WHERE ativo = 1 ORDER BY nome")
     if membros.empty:
         st.subheader("Primeiro acesso: criar a equipe")
@@ -346,6 +377,7 @@ def grafico_horas(c):
 
 # ---------- páginas ----------
 def pg_painel(u):
+    mostrar_banner()
     st.header("Painel")
     atual = semana_atual()
     total = len(CRONOGRAMA)
@@ -637,10 +669,132 @@ PAGINAS = {
 }
 
 
+def injetar_manifest_pwa():
+    """
+    Aponta o <head> para o manifest e o ícone de atalho do app instalável (static/, servido pelo
+    Streamlit em /app/static/). O Streamlit não permite trocar essas tags pelo código do app,
+    então o script as altera direto na página.
+    """
+    if not (Path(__file__).parent / "static" / "manifest.json").exists():
+        return
+    st.iframe(
+        """
+        <script>
+        (function() {
+            const doc = window.parent.document;
+            function ligar(rel, href, extra) {
+                let el = doc.querySelector('link[rel="' + rel + '"]');
+                if (!el) { el = doc.createElement('link'); el.rel = rel; doc.head.appendChild(el); }
+                el.href = href;
+                if (extra) { Object.keys(extra).forEach(k => el.setAttribute(k, extra[k])); }
+            }
+            ligar('manifest', 'app/static/manifest.json?v=1');
+            ligar('apple-touch-icon', 'app/static/apple-touch-icon.png?v=1');
+            if (!doc.querySelector('meta[name="theme-color"]')) {
+                const m = doc.createElement('meta'); m.name = 'theme-color'; m.content = '#2e7d32';
+                doc.head.appendChild(m);
+            }
+        })();
+        </script>
+        """,
+        height=1,
+        width=1,
+    )
+
+
+def injetar_clique_logo_inicio():
+    """
+    Faz a logo também levar ao Painel ao clicar, como o título. st.image() não aceita on_click,
+    então o script escuta cliques no cabeçalho do menu e, se não foi no botão do título, simula um
+    clique nele, reaproveitando a navegação existente.
+    """
+    st.iframe(
+        """
+        <script>
+        (function() {
+            const win = window.parent;
+            if (win.__cliqueLogoInicioAtivo) return;
+            win.__cliqueLogoInicioAtivo = true;
+            win.document.addEventListener('click', function (e) {
+                const cab = e.target.closest && e.target.closest('div[class*="st-key-sidebar_cabecalho"]');
+                if (!cab) return;
+                const botao = cab.querySelector('div[class*="st-key-nav_titulo_inicio"] button');
+                if (!botao || e.target.closest('button') === botao) return;
+                botao.click();
+            }, { capture: true });
+        })();
+        </script>
+        """,
+        height=1,
+        width=1,
+    )
+
+
 def aplicar_estilo():
     """Abas com cara de aba: borda, cantos arredondados e a ativa em destaque."""
     st.markdown("""
     <style>
+    .stMainBlockContainer {
+        max-width: 870px;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        margin-left: auto;
+        margin-right: auto;
+        /* O Streamlit reserva 96px de padding-top por padrão para a barra flutuante. Como a barra é
+           baixa e o conteúdo já tem título, o espaço cai para 60px sem encostar nos ícones da barra. */
+        padding-top: 60px;
+    }
+    /* Esconde só o botão "Deploy"; o menu "⋮" continua para trocar o tema. */
+    [data-testid="stAppDeployButton"] {
+        display: none;
+    }
+    div[class*="st-key-sidebar_cabecalho"] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 2px;
+    }
+    div[class*="st-key-sidebar_cabecalho"] img {
+        margin: 0 auto;
+        cursor: pointer;
+    }
+    /* O título do menu é um st.button (leva ao Painel); aqui ele parece um título comum. */
+    div[class*="st-key-nav_titulo_inicio"] button {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 4px 6px !important;
+        justify-content: center !important;
+        font-weight: 700 !important;
+        color: inherit !important;
+    }
+    div[class*="st-key-nav_titulo_inicio"] button p {
+        font-size: 1.1rem !important;
+    }
+    div[class*="st-key-nav_titulo_inicio"] button:hover {
+        background: rgba(128, 128, 128, 0.12) !important;
+    }
+    .banner-arte {
+        aspect-ratio: 1792 / 592;
+        background-size: cover;
+        background-position: center;
+        border-radius: 16px;
+        margin-bottom: 16px;
+        padding: 0 5%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-shadow: 0 10px 25px -5px rgba(46, 125, 50, 0.35);
+    }
+    .banner-arte p.banner-titulo {
+        font-size: clamp(20px, 4.2vw, 48px) !important; font-weight: 800; line-height: 1.1;
+        margin: 0; max-width: 48%; color: #1b5e20;
+    }
+    .banner-arte p.banner-subtitulo {
+        font-size: clamp(11px, 1.6vw, 20px) !important; margin: 8px 0 0; max-width: 46%;
+        color: #37474f;
+    }
     /* Blocos invisíveis (st.iframe de 1 px com JS e o próprio <style>) ocupam uma vaga na lista
        vertical e aparecem como um risco no topo. display:none os tira da lista; o script continua
        rodando e o CSS continua valendo. */
@@ -683,9 +837,10 @@ def aplicar_estilo():
 
 
 def main():
-    st.set_page_config(page_title="Gestor de Equipe", page_icon="🤝", layout="wide")
+    st.set_page_config(page_title="Gestor de Equipe", page_icon=str(ARQUIVO_LOGO) if ARQUIVO_LOGO.exists() else "🤝", layout="wide")
     init_db()
     aplicar_estilo()
+    injetar_manifest_pwa()
     if "uid" not in st.session_state and not st.session_state.get("limpar_cookie"):
         retomar_sessao()
     if "uid" not in st.session_state:
@@ -696,7 +851,14 @@ def main():
     if st.session_state.get("cookie_novo"):
         _script_cookie(st.session_state.pop("cookie_novo"), DIAS_SESSAO)
     u = usuario()
+    injetar_clique_logo_inicio()
     with st.sidebar:
+        with st.container(key="sidebar_cabecalho"):
+            if ARQUIVO_LOGO.exists():
+                st.image(str(ARQUIVO_LOGO), width=64)
+            if st.button("Gestor de Equipe", key="nav_titulo_inicio", width="stretch"):
+                st.session_state["pagina"] = next(iter(PAGINAS))
+                st.rerun()
         st.write(f"**{u['nome']}**" + (" (líder)" if u["lider"] else ""))
         st.divider()
         pagina = st.session_state.setdefault("pagina", next(iter(PAGINAS)))

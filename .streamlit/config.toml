@@ -1,3 +1,6 @@
+[server]
+enableStaticServing = true
+
 # Os dois temas (claro e escuro) são definidos aqui de propósito: com um
 # [theme] único o Streamlit esconde o seletor de tema do menu de três pontinhos.
 [theme.light]
