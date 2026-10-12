@@ -327,7 +327,12 @@ def grafico_horas(c):
 # ---------- páginas ----------
 def pg_painel(u):
     st.header("Painel")
-    st.write(f"Semana atual do calendário: **{semana_atual()}** de 10")
+    atual = semana_atual()
+    total = len(CRONOGRAMA)
+    falta = total - atual
+    resto = ("última semana" if falta == 0 else
+             f"falta {falta} semana" if falta == 1 else f"faltam {falta} semanas")
+    st.progress(atual / total, text=f"Semana {atual} de {total} · {resto}")
     membros = q("SELECT id, nome FROM membros WHERE ativo = 1")
     c = q("""SELECT m.nome, COUNT(c.id) AS registros, COALESCE(SUM(c.horas),0) AS horas,
                     MAX(c.data) AS ultimo
