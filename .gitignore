@@ -1,0 +1,7 @@
+data/
+__pycache__/
+.venv/
+
+# Instrucoes locais para assistentes de IA (nao publicar)
+CLAUDE.md
+.claude/

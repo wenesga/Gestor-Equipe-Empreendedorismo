@@ -1,0 +1,3 @@
+streamlit>=1.50
+pandas
+fpdf2>=2.8.0
