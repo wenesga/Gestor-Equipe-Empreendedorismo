@@ -6,10 +6,11 @@ Persistência: SQLite (data/equipe.db) + pasta data/uploads.
 """
 import hashlib
 import os
+import secrets
 import sqlite3
 import subprocess
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import altair as alt
@@ -49,6 +50,8 @@ CRITERIOS = {
     "colaboracao": "Colaboração e iniciativa",
 }
 DIAS_ALERTA = 14
+COOKIE_SESSAO = "gestor_sessao"
+DIAS_SESSAO = 30
 MAX_MEMBROS = 6
 
 
@@ -80,6 +83,9 @@ def init_db():
             id INTEGER PRIMARY KEY, data TEXT NOT NULL, tipo TEXT, local TEXT,
             participantes TEXT, pessoas_ouvidas TEXT, relato TEXT NOT NULL,
             aprendizados TEXT, link TEXT, arquivo TEXT, autor_id INTEGER REFERENCES membros(id));
+        CREATE TABLE IF NOT EXISTS sessoes(
+            token_hash TEXT PRIMARY KEY, membro_id INTEGER NOT NULL REFERENCES membros(id),
+            expira_em TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS avaliacoes(
             id INTEGER PRIMARY KEY, rodada TEXT NOT NULL,
             avaliador_id INTEGER NOT NULL REFERENCES membros(id),
@@ -131,8 +137,56 @@ def _pin_valido(p):
     return p.isdigit() and len(p) == 4
 
 
+def _script_cookie(valor, dias):
+    """Grava (ou apaga, com dias=0) o cookie de sessão no navegador, a partir da página pai."""
+    st.iframe(
+        f"""
+        <script>
+        (function() {{
+            const doc = window.parent.document;
+            const seguro = window.parent.location.protocol === 'https:' ? '; Secure' : '';
+            doc.cookie = '{COOKIE_SESSAO}={valor}; path=/; max-age={dias * 86400}; SameSite=Lax' + seguro;
+        }})();
+        </script>
+        """,
+        height=1,
+        width=1,
+    )
+
+
+def iniciar_sessao(membro_id):
+    """Abre a sessão e guarda um token no banco; o cookie é gravado na próxima renderização."""
+    token = secrets.token_urlsafe(32)
+    expira = (datetime.now() + timedelta(days=DIAS_SESSAO)).isoformat()
+    ex("INSERT INTO sessoes(token_hash, membro_id, expira_em) VALUES (?,?,?)",
+       (hash_pin(token), int(membro_id), expira))
+    st.session_state["uid"] = int(membro_id)
+    st.session_state["cookie_novo"] = token
+
+
+def retomar_sessao():
+    """Reabre o login a partir do cookie, se o token ainda for válido e o integrante estiver ativo."""
+    token = st.context.cookies.get(COOKIE_SESSAO)
+    if not token:
+        return
+    r = q("""SELECT s.membro_id FROM sessoes s JOIN membros m ON m.id = s.membro_id
+             WHERE s.token_hash = ? AND s.expira_em > ? AND m.ativo = 1""",
+          (hash_pin(token), datetime.now().isoformat()))
+    if not r.empty:
+        st.session_state["uid"] = int(r["membro_id"].iloc[0])
+
+
+def encerrar_sessao():
+    token = st.context.cookies.get(COOKIE_SESSAO)
+    if token:
+        ex("DELETE FROM sessoes WHERE token_hash = ?", (hash_pin(token),))
+    for chave in ("uid", "pagina"):
+        st.session_state.pop(chave, None)
+    st.session_state["limpar_cookie"] = True
+
+
 def _entrar_como(nome):
-    st.session_state["uid"] = int(q("SELECT id FROM membros WHERE nome = ?", (nome,))["id"].iloc[0])
+    iniciar_sessao(q("SELECT id FROM membros WHERE nome = ?", (nome,))["id"].iloc[0])
     st.rerun()
 
 
@@ -174,7 +228,7 @@ def tela_inicial():
             if st.form_submit_button("Entrar"):
                 m = membros[membros["nome"] == nome].iloc[0]
                 if hash_pin(pin) == m["pin_hash"]:
-                    st.session_state["uid"] = int(m["id"])
+                    iniciar_sessao(m["id"])
                     st.rerun()
                 else:
                     st.error("PIN incorreto.")
@@ -530,9 +584,15 @@ PAGINAS = {
 def main():
     st.set_page_config(page_title="Gestor de Equipe", page_icon="🤝", layout="wide")
     init_db()
+    if "uid" not in st.session_state and not st.session_state.get("limpar_cookie"):
+        retomar_sessao()
     if "uid" not in st.session_state:
+        if st.session_state.pop("limpar_cookie", False):
+            _script_cookie("", 0)
         tela_inicial()
         return
+    if st.session_state.get("cookie_novo"):
+        _script_cookie(st.session_state.pop("cookie_novo"), DIAS_SESSAO)
     u = usuario()
     with st.sidebar:
         st.write(f"**{u['nome']}**" + (" (líder)" if u["lider"] else ""))
@@ -545,8 +605,7 @@ def main():
                 st.rerun()
         st.divider()
         if st.button("Sair"):
-            del st.session_state["uid"]
-            st.session_state.pop("pagina", None)
+            encerrar_sessao()
             st.rerun()
     PAGINAS[pagina](u)
 
