@@ -51,6 +51,7 @@ CRITERIOS = {
 }
 DIAS_ALERTA = 14
 COOKIE_SESSAO = "gestor_sessao"
+EXT_IMAGEM = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 DIAS_SESSAO = 30
 MAX_MEMBROS = 6
 
@@ -141,6 +142,8 @@ def mostrar_evidencia(link, arquivo, chave):
     if link:
         st.markdown(f"**Evidência:** [{link}]({link})")
     if arquivo and (UPLOAD_DIR / arquivo).exists():
+        if Path(arquivo).suffix.lower() in EXT_IMAGEM:
+            st.image(str(UPLOAD_DIR / arquivo), width=420)
         st.download_button(f"Baixar anexo ({arquivo.split('_', 1)[-1]})",
                            (UPLOAD_DIR / arquivo).read_bytes(), arquivo, key=f"anexo_{chave}")
     if not link and not arquivo:
