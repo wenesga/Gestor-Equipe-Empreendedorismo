@@ -130,6 +130,23 @@ def br(valor):
     return f"{valor[8:10]}/{valor[5:7]}/{valor[:4]}"
 
 
+def _txt(valor):
+    """Texto de uma célula do banco, ou vazio quando for nulo."""
+    return valor if isinstance(valor, str) else ""
+
+
+def mostrar_evidencia(link, arquivo, chave):
+    """Link clicável e/ou botão para baixar o arquivo anexado."""
+    link, arquivo = _txt(link), _txt(arquivo)
+    if link:
+        st.markdown(f"**Evidência:** [{link}]({link})")
+    if arquivo and (UPLOAD_DIR / arquivo).exists():
+        st.download_button(f"Baixar anexo ({arquivo.split('_', 1)[-1]})",
+                           (UPLOAD_DIR / arquivo).read_bytes(), arquivo, key=f"anexo_{chave}")
+    if not link and not arquivo:
+        st.caption("Sem evidência anexada.")
+
+
 def semana_atual():
     hoje = date.today().isoformat()
     atual = 1
@@ -485,8 +502,15 @@ def pg_contribuicoes(u):
              FROM contribuicoes c JOIN membros m ON m.id = c.membro_id"""
     df = q(sql + ("" if ver_todos else " WHERE c.membro_id = ?") + " ORDER BY c.data DESC, c.id DESC",
            () if ver_todos else (int(u["id"]),))
-    st.dataframe(df.drop(columns=["id"]).assign(data=df["data"].map(br)), hide_index=True,
-                 width="stretch")
+    if df.empty:
+        st.info("Nenhuma contribuição registrada ainda.")
+    for _, r in df.iterrows():
+        with st.container(border=True):
+            quem = f" · {r['nome']}" if ver_todos else ""
+            st.markdown(f"**{br(r['data'])}** · Semana {r['semana']} · {r['tipo']} · "
+                        f"{r['horas']:g} h{quem}")
+            st.write(r["descricao"])
+            mostrar_evidencia(r["link"], r["arquivo"], f"c{r['id']}")
     meus = df[df["nome"] == u["nome"]]
     if not meus.empty:
         with st.expander("Excluir um registro meu"):
@@ -518,10 +542,25 @@ def pg_diario(u):
                (d.isoformat(), tipo, local, ", ".join(part), ouvidas, relato.strip(), aprend,
                 link.strip() or None, salvar_arquivo(up), int(u["id"])))
             st.success("Registrado.")
-    df = q("""SELECT d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
+    df = q("""SELECT d.id, d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
                      d.aprendizados, d.link, d.arquivo, m.nome AS autor
               FROM diario d LEFT JOIN membros m ON m.id = d.autor_id ORDER BY d.data DESC, d.id DESC""")
-    st.dataframe(df.assign(data=df["data"].map(br)), hide_index=True, width="stretch")
+    if df.empty:
+        st.info("Nenhum registro no diário ainda.")
+    for _, r in df.iterrows():
+        with st.container(border=True):
+            local = f" · {r['local']}" if _txt(r["local"]) else ""
+            st.markdown(f"**{br(r['data'])}** · {r['tipo']}{local}")
+            if _txt(r["participantes"]):
+                st.markdown(f"**Presentes:** {r['participantes']}")
+            if _txt(r["pessoas_ouvidas"]):
+                st.markdown(f"**Pessoas ouvidas:** {r['pessoas_ouvidas']}")
+            st.write(r["relato"])
+            if _txt(r["aprendizados"]):
+                st.markdown(f"**Aprendizados:** {r['aprendizados']}")
+            mostrar_evidencia(r["link"], r["arquivo"], f"d{r['id']}")
+            if _txt(r["autor"]):
+                st.caption(f"Registrado por {r['autor']}")
 
 
 def pg_pares(u):
