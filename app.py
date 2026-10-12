@@ -609,6 +609,12 @@ def aplicar_estilo():
         border-top: 3px solid #2e7d32;
         font-weight: 600;
     }
+    section[data-testid="stSidebar"] .stButton button {
+        min-height: 2.8rem;
+    }
+    section[data-testid="stSidebar"] .stButton button p {
+        font-size: 1.1rem;
+    }
     </style>
     """, unsafe_allow_html=True)
 
