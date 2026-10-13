@@ -7,6 +7,7 @@ Persistência: SQLite (data/equipe.db) + pasta data/uploads.
 import base64
 import hashlib
 import html
+import unicodedata
 import os
 import secrets
 import sqlite3
@@ -238,6 +239,7 @@ def encerrar_sessao():
         ex("DELETE FROM sessoes WHERE token_hash = ?", (hash_pin(token),))
     for chave in ("uid", "pagina"):
         st.session_state.pop(chave, None)
+    st.query_params.clear()
     st.session_state["limpar_cookie"] = True
 
 
@@ -324,6 +326,24 @@ def registros_do_membro(mid):
                     + (SELECT COUNT(*) FROM avaliacoes WHERE avaliador_id = :m OR avaliado_id = :m)
                     + (SELECT COUNT(*) FROM tarefas WHERE responsavel_id = :m)""",
             {"m": mid}).fetchone()[0]
+
+
+def slug(nome):
+    """'Equipe e comunidade' -> 'equipe-e-comunidade', para usar no endereço da página."""
+    base = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().lower()
+    return "-".join(base.split())
+
+
+def pagina_inicial():
+    """Página pedida no endereço (?pagina=...), ou a primeira se não houver ou for inválida."""
+    por_slug = {slug(n): n for n in PAGINAS}
+    return por_slug.get(st.query_params.get("pagina", ""), next(iter(PAGINAS)))
+
+
+def ir_para(nome):
+    """Troca de página e grava no endereço, para a tela continuar a mesma ao atualizar (F5)."""
+    st.session_state["pagina"] = nome
+    st.query_params["pagina"] = slug(nome)
 
 
 def usuario():
@@ -858,7 +878,7 @@ def main():
             if ARQUIVO_LOGO.exists():
                 st.image(str(ARQUIVO_LOGO), width=64)
             if st.button("Gestor de Equipe", key="nav_titulo_inicio", width="stretch"):
-                st.session_state["pagina"] = next(iter(PAGINAS))
+                ir_para(next(iter(PAGINAS)))
                 st.rerun()
         papel = '<div title="Líder da equipe" style="font-size:1.2rem;">👑</div>' if u["lider"] else ""
         st.markdown(
@@ -866,11 +886,12 @@ def main():
             unsafe_allow_html=True,
         )
         st.divider()
-        pagina = st.session_state.setdefault("pagina", next(iter(PAGINAS)))
+        pagina = st.session_state.setdefault("pagina", pagina_inicial())
+        st.query_params["pagina"] = slug(pagina)
         for nome in PAGINAS:
             if st.button(nome, key=f"menu_{nome}", width="stretch",
                          type="primary" if nome == pagina else "tertiary"):
-                st.session_state["pagina"] = nome
+                ir_para(nome)
                 st.rerun()
         st.divider()
         if st.button("Sair"):
