@@ -79,16 +79,15 @@ def main():
                               (4, "Em andamento", ana)]:
         app.ex("UPDATE tarefas SET status=?, responsavel_id=? WHERE semana=?", (status, resp, sem))
 
-    notas = {
-        (ana, bruno): (5, 5, 4, 5), (ana, carla): (5, 4, 5, 4), (ana, diego): (3, 2, 3, 2),
-        (bruno, ana): (5, 5, 5, 5), (bruno, carla): (4, 4, 5, 4), (bruno, diego): (3, 2, 2, 2),
-        (carla, ana): (5, 5, 5, 5), (carla, bruno): (5, 4, 4, 5), (carla, diego): (4, 3, 3, 3),
-        (diego, ana): (5, 5, 5, 5), (diego, bruno): (4, 4, 4, 4), (diego, carla): (5, 5, 4, 5),
+    respostas = {  # Diego tem poucas contribuições: os colegas marcam que participou pouco
+        (ana, bruno): "participou", (ana, carla): "participou", (ana, diego): "pouco",
+        (bruno, ana): "participou", (bruno, carla): "participou", (bruno, diego): "pouco",
+        (carla, ana): "participou", (carla, bruno): "participou", (carla, diego): "nao",
+        (diego, ana): "participou", (diego, bruno): "participou", (diego, carla): "participou",
     }
-    for (av, ao), (p, e, c, col) in notas.items():
-        app.ex("""INSERT INTO avaliacoes(rodada, avaliador_id, avaliado_id, presenca, entrega,
-                  comunicacao, colaboracao, comentario) VALUES (?,?,?,?,?,?,?,?)""",
-               (app.RODADAS[0], av, ao, p, e, c, col, ""))
+    for (avaliador, avaliado), resposta in respostas.items():
+        app.ex("""INSERT INTO participacoes(rodada, avaliador_id, avaliado_id, resposta, comentario)
+                  VALUES (?,?,?,?,?)""", (app.RODADAS[0], avaliador, avaliado, resposta, ""))
     print("Dados de exemplo criados. Entre com qualquer integrante (ex.: Ana Souza) e PIN 1234.")
 
 

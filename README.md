@@ -27,8 +27,8 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 - 🗓️ **Cronograma**: 10 semanas com prazo, responsável e status de cada tarefa.
 - 📝 **Minhas contribuições**: data, tipo, horas, descrição e evidência (link ou arquivo; as imagens aparecem em prévia).
 - 🌱 **Diário de campo**: visitas, entrevistas e observações na comunidade.
-- ⭐ **Avaliação entre pares**: notas de 1 a 5 em quatro critérios, **anônimas**; cada um vê só a média que recebeu.
-- 📄 **Relatório em PDF**: contribuições com evidência e médias recebidas, com cabeçalho institucional.
+- ⭐ **Avaliação entre pares**: cada integrante marca se cada colega *participou*, *participou pouco* ou *não participou*, com comentário opcional. É **anônima**: a equipe só vê os totais.
+- 📄 **Relatório em PDF**: contribuições com evidência e o que os colegas marcaram sobre a participação, com cabeçalho institucional.
 - 📱 **App instalável**: funciona no navegador e pode ser instalado no celular ou no computador.
 
 ## 🖼️ Telas
@@ -109,7 +109,7 @@ O sistema roda como um serviço comum de Streamlit atrás de um proxy HTTPS. Em 
 ## 🎨 Adaptar para outra equipe
 
 - 🗓️ **Textos e prazos** das 10 semanas: lista `CRONOGRAMA`, no início do `app.py`.
-- ⭐ **Rodadas e critérios** da avaliação: `RODADAS` e `CRITERIOS`.
+- ⭐ **Rodadas** da avaliação: lista `RODADAS`, no início do `app.py`.
 - 🖼️ **Identidade visual**: troque os arquivos de `imagens/` e `static/` e a cor em `.streamlit/config.toml`.
 
 ## 📜 Licença

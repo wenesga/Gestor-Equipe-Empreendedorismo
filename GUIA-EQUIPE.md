@@ -24,10 +24,10 @@ Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descri
 O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento.
 
 **Avaliação entre pares**
-Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você dá notas de 1 a 5 para cada colega em quatro critérios: presença, tarefas, comunicação e colaboração, com comentário opcional. As notas são anônimas. A tela mostra só a média que cada pessoa recebeu. Dá para editar sua avaliação enquanto a rodada está aberta.
+Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você marca, para cada colega, se ele *participou*, *participou pouco* ou *não participou* do trabalho, com comentário opcional. Já vem marcado "participou", então é só conferir e salvar. É anônimo: a tela mostra só os totais de cada pessoa.
 
 **Relatório em PDF**
-Gera o relatório individual em PDF, com todas as contribuições da pessoa (com evidência) e as médias recebidas. O líder pode gerar o relatório de qualquer integrante; os demais, só o próprio.
+Gera o relatório individual em PDF, com todas as contribuições da pessoa (com evidência) e o que os colegas marcaram sobre a participação. O líder pode gerar o relatório de qualquer integrante; os demais, só o próprio.
 
 ## Um uso típico no dia a dia
 

@@ -1,4 +1,4 @@
-"""Relatório individual em PDF: contribuições com evidência e médias da avaliação entre pares."""
+"""Relatório individual em PDF: contribuições com evidência e o que os colegas marcaram sobre a participação."""
 
 from datetime import date
 from pathlib import Path
@@ -57,7 +57,7 @@ def _secao(pdf, titulo):
 def gerar_pdf(nome, equipe, comunidade, contribuicoes, medias):
     """
     contribuicoes: DataFrame com data, semana, tipo, descricao, horas, link, arquivo.
-    medias: DataFrame com rodada e colunas de média por critério (já arredondadas).
+    medias: DataFrame com a rodada e a contagem de colegas por resposta (participou, pouco, não).
     """
     pdf = _PDF(format="A4")
     pdf.set_margins(18, 16, 18)
@@ -110,10 +110,10 @@ def gerar_pdf(nome, equipe, comunidade, contribuicoes, medias):
                        new_x="LMARGIN", new_y="NEXT")
         pdf.ln(2.5)
 
-    _secao(pdf, "Avaliação entre pares (média de 1 a 5)")
+    _secao(pdf, "Participação segundo os colegas")
     if medias.empty:
         pdf.set_font("Helvetica", "I", 10)
-        pdf.cell(0, 6, "Sem avaliações recebidas.", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, "Ainda sem respostas dos colegas.", new_x="LMARGIN", new_y="NEXT")
     else:
         colunas = list(medias.columns)
         larguras = [58] + [(pdf.w - pdf.l_margin - pdf.r_margin - 58) / (len(colunas) - 1)] * (len(colunas) - 1)
@@ -127,6 +127,6 @@ def gerar_pdf(nome, equipe, comunidade, contribuicoes, medias):
         for _, r in medias.iterrows():
             for c, w in zip(colunas, larguras):
                 v = r[c]
-                pdf.cell(w, 7, _t(f"{v:.2f}" if isinstance(v, float) else v), border="B")
+                pdf.cell(w, 7, _t(v), border="B")
             pdf.ln()
     return bytes(pdf.output())
