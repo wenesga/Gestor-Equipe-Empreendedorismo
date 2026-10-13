@@ -751,6 +751,32 @@ def injetar_clique_logo_inicio():
     )
 
 
+def injetar_aviso_saida():
+    """
+    Mostra o aviso nativo do navegador ('Sair do site?') ao fechar, atualizar ou sair da página.
+
+    O app é uma página única: o conteúdo muda por WebSocket, então o botão Voltar do navegador sai
+    do app sem aviso. O texto do aviso é fixo (definido pelo navegador); só dá para ligar ou desligar.
+    """
+    st.iframe(
+        """
+        <script>
+        (function() {
+            const win = window.parent;
+            if (win.__avisoSaidaAtivo) return;
+            win.__avisoSaidaAtivo = true;
+            win.addEventListener('beforeunload', function (e) {
+                e.preventDefault();
+                e.returnValue = '';
+            });
+        })();
+        </script>
+        """,
+        height=1,
+        width=1,
+    )
+
+
 def aplicar_estilo():
     """Abas com cara de aba: borda, cantos arredondados e a ativa em destaque."""
     st.markdown("""
@@ -862,6 +888,7 @@ def main():
     init_db()
     aplicar_estilo()
     injetar_manifest_pwa()
+    injetar_aviso_saida()
     if "uid" not in st.session_state and not st.session_state.get("limpar_cookie"):
         retomar_sessao()
     if "uid" not in st.session_state:
