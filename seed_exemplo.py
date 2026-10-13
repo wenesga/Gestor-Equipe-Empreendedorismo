@@ -79,6 +79,16 @@ def main():
                               (4, "Em andamento", ana)]:
         app.ex("UPDATE tarefas SET status=?, responsavel_id=? WHERE semana=?", (status, resp, sem))
 
+    notas = {
+        (ana, bruno): (5, 5, 4, 5), (ana, carla): (5, 4, 5, 4), (ana, diego): (3, 2, 3, 2),
+        (bruno, ana): (5, 5, 5, 5), (bruno, carla): (4, 4, 5, 4), (bruno, diego): (3, 2, 2, 2),
+        (carla, ana): (5, 5, 5, 5), (carla, bruno): (5, 4, 4, 5), (carla, diego): (4, 3, 3, 3),
+        (diego, ana): (5, 5, 5, 5), (diego, bruno): (4, 4, 4, 4), (diego, carla): (5, 5, 4, 5),
+    }
+    for (av, ao), (p, e, c, col) in notas.items():
+        app.ex("""INSERT INTO avaliacoes(rodada, avaliador_id, avaliado_id, presenca, entrega,
+                  comunicacao, colaboracao, comentario) VALUES (?,?,?,?,?,?,?,?)""",
+               (app.RODADAS[0], av, ao, p, e, c, col, ""))
     print("Dados de exemplo criados. Entre com qualquer integrante (ex.: Ana Souza) e PIN 1234.")
 
 

@@ -1,6 +1,6 @@
 # Gestor de Equipe: como funciona
 
-Um sistema simples para a equipe organizar o projeto em um só lugar: tarefas, o que cada um fez e o que ouvimos da comunidade.
+Um sistema simples para a equipe organizar o projeto em um só lugar: tarefas, o que cada um fez, o que ouvimos da comunidade e avaliação entre os colegas.
 
 ## Entrar
 
@@ -23,8 +23,11 @@ Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descri
 **Diário de campo**
 O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento.
 
+**Avaliação entre pares**
+Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você dá notas de 1 a 5 para cada colega em quatro critérios: presença, tarefas, comunicação e colaboração, com comentário opcional. As notas são anônimas. A tela mostra só a média que cada pessoa recebeu. Dá para editar sua avaliação enquanto a rodada está aberta.
+
 **Relatório em PDF**
-Gera o relatório individual em PDF, com todas as contribuições da pessoa (com evidência). O líder pode gerar o relatório de qualquer integrante; os demais, só o próprio.
+Gera o relatório individual em PDF, com todas as contribuições da pessoa (com evidência) e as médias recebidas. O líder pode gerar o relatório de qualquer integrante; os demais, só o próprio.
 
 ## Um uso típico no dia a dia
 
@@ -32,7 +35,8 @@ Gera o relatório individual em PDF, com todas as contribuições da pessoa (com
 2. Depois de fazer algo, abrir **Minhas contribuições** e registrar com o link ou arquivo.
 3. Depois de ir à comunidade, preencher o **Diário de campo**.
 4. Olhar o **Painel** para ver o andamento.
-5. No fim, baixar o **Relatório em PDF**.
+5. Nas rodadas de avaliação, preencher a **Avaliação entre pares**.
+6. No fim, baixar o **Relatório em PDF**.
 
 ## Onde ficam os dados
 
