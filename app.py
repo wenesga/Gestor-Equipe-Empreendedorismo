@@ -6,6 +6,7 @@ Persistência: SQLite (data/equipe.db) + pasta data/uploads.
 """
 import base64
 import hashlib
+import html
 import os
 import secrets
 import sqlite3
@@ -859,7 +860,11 @@ def main():
             if st.button("Gestor de Equipe", key="nav_titulo_inicio", width="stretch"):
                 st.session_state["pagina"] = next(iter(PAGINAS))
                 st.rerun()
-        st.write(f"**{u['nome']}**" + (" (líder)" if u["lider"] else ""))
+        papel = '<div title="Líder da equipe" style="font-size:1.2rem;">👑</div>' if u["lider"] else ""
+        st.markdown(
+            f'<div style="text-align:center; line-height:1.3;"><b>{html.escape(u["nome"])}</b>{papel}</div>',
+            unsafe_allow_html=True,
+        )
         st.divider()
         pagina = st.session_state.setdefault("pagina", next(iter(PAGINAS)))
         for nome in PAGINAS:
