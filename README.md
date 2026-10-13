@@ -1,4 +1,14 @@
+<p align="center">
+  <img src="imagens/banner.png" alt="Gestor de Equipe" width="100%">
+</p>
+
 # 🤝 Gestor de Equipe
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-app-FF4B4B?logo=streamlit&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-dados%20locais-003B57?logo=sqlite&logoColor=white)
+![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-2e7d32)
+![App instalável](https://img.shields.io/badge/app-instal%C3%A1vel-2e7d32)
 
 > *Saber **quem fez o quê**, com prova, e manter o projeto andando semana a semana.*
 
@@ -20,6 +30,22 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 - ⭐ **Avaliação entre pares**: notas de 1 a 5 em quatro critérios, **anônimas**; cada um vê só a média que recebeu.
 - 📄 **Relatório em PDF**: contribuições com evidência e médias recebidas, com cabeçalho institucional.
 - 📱 **App instalável**: funciona no navegador e pode ser instalado no celular ou no computador.
+
+## 🖼️ Telas
+
+*Capturas feitas com os dados de exemplo (equipe fictícia).*
+
+**📊 Painel**
+
+![Painel](docs/painel.jpg)
+
+**🗓️ Cronograma**
+
+![Cronograma](docs/cronograma.jpg)
+
+**📄 Relatório individual em PDF**
+
+<img src="docs/relatorio.png" alt="Relatório em PDF" width="520">
 
 ## 🔑 Como entrar
 
