@@ -880,7 +880,8 @@ def main():
             if st.button("Gestor de Equipe", key="nav_titulo_inicio", width="stretch"):
                 ir_para(next(iter(PAGINAS)))
                 st.rerun()
-        papel = '<div title="Líder da equipe" style="font-size:1.2rem;">👑</div>' if u["lider"] else ""
+        papel = ('<div title="Líder da equipe" style="font-size:1.2rem;">👑</div>' if u["lider"] else
+                 '<div title="Integrante" style="font-size:1.2rem;">🌱</div>')
         st.markdown(
             f'<div style="text-align:center; line-height:1.3;"><b>{html.escape(u["nome"])}</b>{papel}</div>',
             unsafe_allow_html=True,
