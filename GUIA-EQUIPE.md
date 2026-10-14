@@ -24,7 +24,7 @@ Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descri
 O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento. Qualquer integrante pode editar ou excluir os registros do diário.
 
 **Entrega da semana**
-Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. Dá para editar o texto antes de copiar. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
+Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. Dá para editar o texto antes de copiar, pelo botão Editar o texto. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
 
 **Avaliação entre pares**
 Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você marca, para cada colega, se ele *participou*, *participou pouco* ou *não participou* do trabalho, com comentário opcional. Já vem marcado "participou", então é só conferir e salvar. É anônimo: a tela mostra só os totais de cada pessoa.

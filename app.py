@@ -831,23 +831,35 @@ def pg_entrega(u):
         st.warning("Ainda falta preencher: " + "; ".join(faltam) + ". "
                    "Os campos da equipe ficam em Equipe e comunidade; o texto aparece abaixo como [A PREENCHER].")
     chave_a, chave_m = f"edit_assunto_{semana}", f"edit_msg_{semana}"
+    chave_ed = f"editando_{semana}"
     editado = chave_a in st.session_state or chave_m in st.session_state
-    editar = st.toggle("Editar o texto antes de copiar", key=f"ed_{semana}")
-    if editar:
+    editando = st.session_state.get(chave_ed, False)
+
+    barra_1, barra_2 = st.columns([2, 2])
+    if editando:
+        if barra_1.button("✔ Concluir edição e copiar", key=f"conclui_{semana}", type="primary", width="stretch"):
+            st.session_state[chave_ed] = False
+            st.rerun()
+    else:
+        if barra_1.button("✏️ Editar o texto", key=f"edita_{semana}", type="primary", width="stretch"):
+            st.session_state[chave_ed] = True
+            st.rerun()
+    if editado and barra_2.button("↩ Voltar ao texto original", key=f"orig_{semana}", width="stretch"):
+        for chave in (chave_a, chave_m, f"ti_{semana}", f"ta_{semana}"):
+            st.session_state.pop(chave, None)
+        st.session_state[chave_ed] = False
+        st.rerun()
+
+    if editando:
         st.text_input("Assunto", st.session_state.get(chave_a, assunto), key=f"ti_{semana}",
                       on_change=lambda: st.session_state.update({chave_a: st.session_state[f"ti_{semana}"]}))
         st.text_area("Mensagem", st.session_state.get(chave_m, mensagem), height=460, key=f"ta_{semana}",
                      on_change=lambda: st.session_state.update({chave_m: st.session_state[f"ta_{semana}"]}))
-        st.caption("As alterações ficam guardadas até você fechar a página. Desligue a chave acima para copiar.")
     else:
         st.markdown("**Assunto** (use o botão de copiar no canto do quadro)")
         st.code(st.session_state.get(chave_a, assunto), language=None)
         st.markdown("**Mensagem**")
         st.code(st.session_state.get(chave_m, mensagem), language=None, wrap_lines=True)
-    if editado and st.button("Voltar ao texto original", key=f"orig_{semana}"):
-        for chave in (chave_a, chave_m, f"ti_{semana}", f"ta_{semana}"):
-            st.session_state.pop(chave, None)
-        st.rerun()
     st.caption("Cole no fórum do AVA, em Adicionar tópico de discussão. Só um integrante posta em nome da equipe.")
 
 
