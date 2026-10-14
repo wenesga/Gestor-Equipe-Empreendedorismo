@@ -519,6 +519,19 @@ def pg_cronograma(u):
                     ex("UPDATE tarefas SET responsavel_id=?, status=? WHERE id=?",
                        (resp, stt, int(r["id"])))
                     st.rerun()
+            tarefas_sem = t[t["semana"] == sem]
+            with st.expander("Editar ou excluir uma tarefa"):
+                tid = st.selectbox("Tarefa", tarefas_sem["id"], key=f"ed{sem}",
+                                   format_func=lambda i, ts=tarefas_sem: ts[ts["id"] == i]["titulo"].iloc[0])
+                atual_txt = tarefas_sem[tarefas_sem["id"] == tid]["titulo"].iloc[0]
+                novo_txt = st.text_input("Texto da tarefa", atual_txt, key=f"edt{sem}_{tid}")
+                b1, b2 = st.columns(2)
+                if b1.button("Salvar texto", key=f"salva{sem}_{tid}") and novo_txt.strip():
+                    ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo_txt.strip(), int(tid)))
+                    st.rerun()
+                if b2.button("Excluir tarefa", key=f"exclui{sem}_{tid}"):
+                    ex("DELETE FROM tarefas WHERE id = ?", (int(tid),))
+                    st.rerun()
             with st.form(f"nt{sem}", clear_on_submit=True):
                 novo = st.text_input("Nova tarefa nesta semana")
                 if st.form_submit_button("Adicionar") and novo.strip():
