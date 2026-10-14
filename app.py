@@ -527,9 +527,12 @@ def pg_cronograma(u):
                     st.rerun()
             with st.form(f"nt{sem}", clear_on_submit=True):
                 novo = st.text_input("Nova tarefa nesta semana")
+                novo_resp = st.selectbox("Responsável", [None] + list(nomes), key=f"nr{sem}",
+                                         format_func=lambda i: nomes.get(i, "—"))
                 if st.form_submit_button("Adicionar") and novo.strip():
-                    ex("INSERT INTO tarefas(semana, prazo, titulo) VALUES (?,?,?)",
-                       (int(sem), t[t["semana"] == sem]["prazo"].iloc[0], novo.strip()))
+                    ex("INSERT INTO tarefas(semana, prazo, titulo, responsavel_id) VALUES (?,?,?,?)",
+                       (int(sem), t[t["semana"] == sem]["prazo"].iloc[0], novo.strip(),
+                        int(novo_resp) if novo_resp else None))
                     st.rerun()
 
 
