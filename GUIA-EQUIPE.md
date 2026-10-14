@@ -12,7 +12,7 @@ Na tela inicial, escolha seu nome e digite seu PIN de 4 dígitos. O líder cadas
 Visão geral da equipe: quantos registros e horas cada pessoa tem, o último registro de cada um, quantas tarefas estão pendentes, em andamento e concluídas, e a lista de pendências. Se alguém passa 14 dias sem registrar nada, aparece um aviso.
 
 **Equipe**
-Nome da equipe, polo e lista de integrantes. O líder tem aqui as ferramentas para redefinir PIN, passar a liderança e remover integrantes.
+Nome da equipe e lista de integrantes. O líder tem aqui as ferramentas para redefinir PIN, passar a liderança e remover integrantes.
 
 **Cronograma**
 As 10 semanas da disciplina, cada uma com seu prazo. Em cada tarefa dá para escolher o responsável e mudar o status (Pendente, Em andamento, Concluída). Também dá para acrescentar tarefas novas em qualquer semana.

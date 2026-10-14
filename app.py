@@ -431,7 +431,12 @@ def pg_painel(u):
     if pend.empty:
         st.caption("Nenhuma pendência.")
     else:
-        st.dataframe(pend.assign(Prazo=pend["Prazo"].map(br)), hide_index=True, width="stretch")
+        atual = semana_atual()
+        tabela = pend.assign(Prazo=pend["Prazo"].map(br)).style.apply(
+            lambda linha: ["background-color: rgba(46, 125, 50, 0.35); font-weight: 600"
+                           if linha["Semana"] == atual else "" for _ in linha], axis=1)
+        st.dataframe(tabela, hide_index=True, width="stretch")
+        st.caption("Em verde: a semana em vigor.")
 
 
 def pg_equipe(u):
@@ -439,9 +444,8 @@ def pg_equipe(u):
     e = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
     with st.form("equipe"):
         nome = st.text_input("Nome da equipe", e["nome"] or "")
-        polo = st.text_input("Polo", e["polo"] or "")
         if st.form_submit_button("Salvar"):
-            ex("UPDATE equipe SET nome=?, polo=? WHERE id=1", (nome.strip(), polo.strip()))
+            ex("UPDATE equipe SET nome=? WHERE id=1", (nome.strip(),))
             st.success("Salvo.")
     st.subheader("Integrantes")
     m = q("SELECT nome, CASE lider WHEN 1 THEN 'Líder' ELSE '' END AS papel FROM membros "
