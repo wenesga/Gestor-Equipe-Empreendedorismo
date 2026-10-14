@@ -18,13 +18,13 @@ Nome da equipe, polo, comunidade escolhida, justificativa, como faremos contato 
 As 10 semanas da disciplina, cada uma com seu prazo. Em cada tarefa dá para escolher o responsável e mudar o status (Pendente, Em andamento, Concluída). Também dá para acrescentar tarefas novas em qualquer semana.
 
 **Minhas contribuições**
-Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descrição, com um link ou arquivo anexo. Cada um vê a própria lista e pode ver a da equipe toda. Cada um pode excluir apenas os próprios registros.
+Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descrição, com um link ou arquivo anexo. Cada um vê a própria lista e pode ver a da equipe toda. Cada um pode editar ou excluir apenas os próprios registros.
 
 **Diário de campo**
-O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento.
+O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento. Cada registro pode ser editado ou excluído por quem o escreveu (o líder também pode).
 
 **Entrega da semana**
-Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
+Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. Dá para editar o texto antes de copiar. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
 
 **Avaliação entre pares**
 Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você marca, para cada colega, se ele *participou*, *participou pouco* ou *não participou* do trabalho, com comentário opcional. Já vem marcado "participou", então é só conferir e salvar. É anônimo: a tela mostra só os totais de cada pessoa.

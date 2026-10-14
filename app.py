@@ -577,11 +577,27 @@ def pg_contribuicoes(u):
             mostrar_evidencia(r["link"], r["arquivo"], f"c{r['id']}")
     meus = df[df["nome"] == u["nome"]]
     if not meus.empty:
-        with st.expander("Excluir um registro meu"):
-            rid = st.selectbox("Registro", meus["id"],
+        with st.expander("Editar ou excluir um registro meu"):
+            rid = st.selectbox("Registro", meus["id"], key="ed_contrib",
                                format_func=lambda i: f"{br(meus[meus['id'] == i]['data'].iloc[0])} · "
                                f"{meus[meus['id'] == i]['descricao'].iloc[0][:50]}")
-            if st.button("Excluir"):
+            r = meus[meus["id"] == rid].iloc[0]
+            with st.form(f"edc_{rid}"):
+                c1, c2, c3 = st.columns(3)
+                nd = c1.date_input("Data", date.fromisoformat(r["data"]), format="DD/MM/YYYY")
+                ns = c2.number_input("Semana", 1, 10, int(r["semana"]))
+                nh = c3.number_input("Horas", 0.0, 24.0, float(r["horas"]), 0.5)
+                nt = st.selectbox("Tipo de atividade", TIPOS_CONTRIB,
+                                  index=TIPOS_CONTRIB.index(r["tipo"]) if r["tipo"] in TIPOS_CONTRIB else 0)
+                ndesc = st.text_area("O que você fez?", r["descricao"])
+                nlink = st.text_input("Link da evidência", _txt(r["link"]))
+                if st.form_submit_button("Salvar alterações") and ndesc.strip():
+                    ex("""UPDATE contribuicoes SET data=?, semana=?, tipo=?, descricao=?, horas=?, link=?
+                          WHERE id=? AND membro_id=?""",
+                       (nd.isoformat(), int(ns), nt, ndesc.strip(), nh, nlink.strip() or None,
+                        int(rid), int(u["id"])))
+                    st.rerun()
+            if st.button("Excluir este registro", key=f"exc_{rid}"):
                 ex("DELETE FROM contribuicoes WHERE id = ? AND membro_id = ?", (int(rid), int(u["id"])))
                 st.rerun()
 
@@ -625,6 +641,31 @@ def pg_diario(u):
             mostrar_evidencia(r["link"], r["arquivo"], f"d{r['id']}")
             if _txt(r["autor"]):
                 st.caption(f"Registrado por {r['autor']}")
+    editaveis = df if u["lider"] else df[df["autor"] == u["nome"]]
+    if not editaveis.empty:
+        with st.expander("Editar ou excluir um registro"):
+            did = st.selectbox("Registro", editaveis["id"], key="ed_diario",
+                               format_func=lambda i: f"{br(editaveis[editaveis['id'] == i]['data'].iloc[0])} · "
+                               f"{editaveis[editaveis['id'] == i]['tipo'].iloc[0]}")
+            r = editaveis[editaveis["id"] == did].iloc[0]
+            with st.form(f"edd_{did}"):
+                c1, c2, c3 = st.columns(3)
+                nd = c1.date_input("Data", date.fromisoformat(r["data"]), format="DD/MM/YYYY")
+                nt = c2.selectbox("Tipo", TIPOS_CAMPO, index=TIPOS_CAMPO.index(r["tipo"]) if r["tipo"] in TIPOS_CAMPO else 0)
+                nl = c3.text_input("Local / canal", _txt(r["local"]))
+                npart = st.text_input("Integrantes presentes", _txt(r["participantes"]))
+                nouv = st.text_input("Pessoas ouvidas", _txt(r["pessoas_ouvidas"]))
+                nrel = st.text_area("O que aconteceu / o que foi dito", _txt(r["relato"]), height=150)
+                napr = st.text_area("Aprendizados, dores e necessidades percebidas", _txt(r["aprendizados"]))
+                nlink = st.text_input("Link de evidência", _txt(r["link"]))
+                if st.form_submit_button("Salvar alterações") and nrel.strip():
+                    ex("""UPDATE diario SET data=?, tipo=?, local=?, participantes=?, pessoas_ouvidas=?,
+                          relato=?, aprendizados=?, link=? WHERE id=?""",
+                       (nd.isoformat(), nt, nl, npart, nouv, nrel.strip(), napr, nlink.strip() or None, int(did)))
+                    st.rerun()
+            if st.button("Excluir este registro", key=f"excd_{did}"):
+                ex("DELETE FROM diario WHERE id = ?", (int(did),))
+                st.rerun()
 
 
 def pg_pares(u):
@@ -792,10 +833,24 @@ def pg_entrega(u):
     if faltam:
         st.warning("Ainda falta preencher: " + "; ".join(faltam) + ". "
                    "Os campos da equipe ficam em Equipe e comunidade; o texto aparece abaixo como [A PREENCHER].")
-    st.markdown("**Assunto** (use o botão de copiar no canto do quadro)")
-    st.code(assunto, language=None)
-    st.markdown("**Mensagem**")
-    st.code(mensagem, language=None, wrap_lines=True)
+    chave_a, chave_m = f"edit_assunto_{semana}", f"edit_msg_{semana}"
+    editado = chave_a in st.session_state or chave_m in st.session_state
+    editar = st.toggle("Editar o texto antes de copiar", key=f"ed_{semana}")
+    if editar:
+        st.text_input("Assunto", st.session_state.get(chave_a, assunto), key=f"ti_{semana}",
+                      on_change=lambda: st.session_state.update({chave_a: st.session_state[f"ti_{semana}"]}))
+        st.text_area("Mensagem", st.session_state.get(chave_m, mensagem), height=460, key=f"ta_{semana}",
+                     on_change=lambda: st.session_state.update({chave_m: st.session_state[f"ta_{semana}"]}))
+        st.caption("As alterações ficam guardadas até você fechar a página. Desligue a chave acima para copiar.")
+    else:
+        st.markdown("**Assunto** (use o botão de copiar no canto do quadro)")
+        st.code(st.session_state.get(chave_a, assunto), language=None)
+        st.markdown("**Mensagem**")
+        st.code(st.session_state.get(chave_m, mensagem), language=None, wrap_lines=True)
+    if editado and st.button("Voltar ao texto original", key=f"orig_{semana}"):
+        for chave in (chave_a, chave_m, f"ti_{semana}", f"ta_{semana}"):
+            st.session_state.pop(chave, None)
+        st.rerun()
     st.caption("Cole no fórum do AVA, em Adicionar tópico de discussão. Só um integrante posta em nome da equipe.")
 
 
