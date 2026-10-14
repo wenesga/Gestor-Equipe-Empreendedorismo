@@ -27,6 +27,7 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 - 🗓️ **Cronograma**: 10 semanas com prazo, responsável e status de cada tarefa.
 - 📝 **Minhas contribuições**: data, tipo, horas, descrição e evidência (link ou arquivo; as imagens aparecem em prévia).
 - 🌱 **Diário de campo**: visitas, entrevistas e observações na comunidade.
+- 📮 **Entrega da semana**: monta o texto da postagem do fórum (equipe, integrantes, contrato, comunidade, Diário de campo, tarefas e contribuições da semana) pronto para copiar e colar.
 - ⭐ **Avaliação entre pares**: cada integrante marca se cada colega *participou*, *participou pouco* ou *não participou*, com comentário opcional. É **anônima**: a equipe só vê os totais.
 - 📄 **Relatório em PDF**: contribuições com evidência e o que os colegas marcaram sobre a participação, com cabeçalho institucional.
 - 📱 **App instalável**: funciona no navegador e pode ser instalado no celular ou no computador.

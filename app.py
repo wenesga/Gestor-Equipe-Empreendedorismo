@@ -669,6 +669,141 @@ def pg_pares(u):
     st.dataframe(resumo, hide_index=True, width="stretch")
 
 
+def _janela_semana(semana):
+    """Primeiro dia da semana e o primeiro dia da seguinte (para filtrar registros por data)."""
+    inicio = date.fromisoformat(next(p for s, p, _ in CRONOGRAMA if s == semana))
+    proxima = [p for s, p, _ in CRONOGRAMA if s == semana + 1]
+    fim = date.fromisoformat(proxima[0]) if proxima else inicio + timedelta(days=7)
+    return inicio.isoformat(), fim.isoformat()
+
+
+def _linha_evidencia(link, arquivo):
+    link, arquivo = _txt(link), _txt(arquivo)
+    if link:
+        return f"Evidência: {link}"
+    if arquivo:
+        return f"Evidência: arquivo anexado ({arquivo.split('_', 1)[-1]})"
+    return ""
+
+
+def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
+    """Monta o assunto, a mensagem e a lista de campos que ainda faltam para a entrega da semana."""
+    faltam = []
+
+    def campo(valor, nome):
+        valor = _txt(valor).strip()
+        if not valor:
+            faltam.append(nome)
+            return "[A PREENCHER]"
+        return valor
+
+    nome_equipe = campo(equipe["nome"], "Nome da equipe")
+    titulo_semana = next(d for s, _, d in CRONOGRAMA if s == semana)
+    cabecalho = [f"EQUIPE: {nome_equipe}", "", "INTEGRANTES:"]
+    cabecalho += [f"- {n}" for n in integrantes] + ["", f"LÍDER: {lider or '[A PREENCHER]'}", ""]
+
+    if semana == 1:
+        assunto = f"P1 - Equipe {nome_equipe}: contrato de equipe e comunidade escolhida"
+        corpo = cabecalho + [
+            "CONTRATO DE EQUIPE", campo(equipe["contrato"], "Contrato de equipe"), "",
+            "COMUNIDADE ESCOLHIDA", campo(equipe["comunidade"], "Comunidade escolhida"), "",
+            "JUSTIFICATIVA DA ESCOLHA", campo(equipe["justificativa"], "Justificativa da escolha"), "",
+            "COMO A EQUIPE PRETENDE FAZER CONTATO COM A COMUNIDADE",
+            campo(equipe["contato"], "Como fazer contato com a comunidade"),
+        ]
+        return assunto, "\n".join(corpo), faltam
+
+    if semana == 2:
+        assunto = f"P2 - Equipe {nome_equipe}: Registro da Imersão"
+        corpo = cabecalho + ["REGISTRO DA IMERSÃO", ""]
+        if not diario_ids:
+            faltam.append("Registros do Diário de campo desta semana")
+            corpo += ["[A PREENCHER: nenhum registro do Diário de campo selecionado]", ""]
+        for i, d in enumerate(diario_ids, start=1):
+            corpo.append(f"{i}. {br(d['data'])} - {d['tipo']}" + (f" - {d['local']}" if _txt(d["local"]) else ""))
+            if _txt(d["participantes"]):
+                corpo.append(f"Integrantes presentes: {d['participantes']}")
+            if _txt(d["pessoas_ouvidas"]):
+                corpo.append(f"Pessoas ouvidas: {d['pessoas_ouvidas']}")
+            corpo.append(f"O que aconteceu: {d['relato']}")
+            if _txt(d["aprendizados"]):
+                corpo.append(f"Aprendizados: {d['aprendizados']}")
+            evid = _linha_evidencia(d["link"], d["arquivo"])
+            if evid:
+                corpo.append(evid)
+            corpo.append("")
+        return assunto, "\n".join(corpo).rstrip(), faltam
+
+    # semanas 3 a 10: tarefas e contribuições registradas, para a equipe completar
+    assunto = f"Semana {semana} - Equipe {nome_equipe}: {titulo_semana}"
+    corpo = cabecalho + [f"ENTREGA DA SEMANA {semana}: {titulo_semana.upper()}", ""]
+    tarefas = q("""SELECT t.titulo, t.status, m.nome AS responsavel FROM tarefas t
+                   LEFT JOIN membros m ON m.id = t.responsavel_id WHERE t.semana = ? ORDER BY t.id""",
+                (semana,))
+    corpo.append("ATIVIDADES DA SEMANA")
+    for _, t in tarefas.iterrows():
+        resp = f" ({t['responsavel']})" if _txt(t["responsavel"]) else ""
+        corpo.append(f"- {t['titulo']}{resp} - {t['status']}")
+    contribs = q("""SELECT c.data, c.tipo, c.descricao, c.link, c.arquivo, m.nome FROM contribuicoes c
+                    JOIN membros m ON m.id = c.membro_id WHERE c.semana = ? ORDER BY c.data""", (semana,))
+    corpo += ["", "CONTRIBUIÇÕES REGISTRADAS"]
+    if contribs.empty:
+        corpo.append("- Nenhuma contribuição registrada para esta semana.")
+    for _, c in contribs.iterrows():
+        evid = _linha_evidencia(c["link"], c["arquivo"])
+        corpo.append(f"- {br(c['data'])} - {c['nome']} - {c['tipo']}: {c['descricao']}" + (f" ({evid})" if evid else ""))
+    corpo += ["", "[A PREENCHER: complete conforme o que o enunciado da semana pedir]"]
+    faltam.append("Texto do enunciado da semana (complete à mão)")
+    return assunto, "\n".join(corpo), faltam
+
+
+def pg_entrega(u):
+    st.header("Entrega da semana")
+    st.caption("Monta o texto da postagem do fórum do AVA com o que já está registrado. "
+               "É só copiar e colar.")
+    semana = st.selectbox("Semana", [s for s, _, _ in CRONOGRAMA], index=semana_atual() - 1,
+                          format_func=lambda s: f"Semana {s} - {next(d for n, _, d in CRONOGRAMA if n == s)}")
+    equipe = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
+    membros = q("SELECT nome, lider FROM membros WHERE ativo = 1 ORDER BY nome")
+    integrantes = list(membros["nome"])
+    extras = st.text_area("Integrantes que ainda não estão no sistema (um por linha)", height=80,
+                          placeholder="Ex.: Valéria Bispo Martins")
+    for nome in [e.strip() for e in extras.split("\n") if e.strip()]:
+        if nome not in integrantes:
+            integrantes.append(nome)
+    lideres = membros[membros["lider"] == 1]["nome"]
+    lider = lideres.iloc[0] if not lideres.empty else ""
+
+    diario = pd.DataFrame()
+    escolhidos = []
+    if semana == 2:
+        ini, fim = _janela_semana(2)
+        diario = q("""SELECT d.id, d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
+                             d.aprendizados, d.link, d.arquivo FROM diario d
+                      WHERE d.data >= ? AND d.data < ? ORDER BY d.data, d.id""", (ini, fim))
+        todos = q("""SELECT d.id, d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
+                            d.aprendizados, d.link, d.arquivo FROM diario d ORDER BY d.data, d.id""")
+        if todos.empty:
+            st.info("Ainda não há registros no Diário de campo. Registre a visita à comunidade primeiro.")
+        else:
+            ids = st.multiselect(
+                "Registros do Diário de campo que entram na postagem", list(todos["id"]),
+                default=list(diario["id"]),
+                format_func=lambda i: f"{br(todos[todos['id'] == i]['data'].iloc[0])} - "
+                                      f"{todos[todos['id'] == i]['tipo'].iloc[0]}")
+            escolhidos = [r for _, r in todos[todos["id"].isin(ids)].iterrows()]
+
+    assunto, mensagem, faltam = _texto_entrega(semana, equipe, integrantes, lider, escolhidos)
+    if faltam:
+        st.warning("Ainda falta preencher: " + "; ".join(faltam) + ". "
+                   "Os campos da equipe ficam em Equipe e comunidade; o texto aparece abaixo como [A PREENCHER].")
+    st.markdown("**Assunto** (use o botão de copiar no canto do quadro)")
+    st.code(assunto, language=None)
+    st.markdown("**Mensagem**")
+    st.code(mensagem, language=None, wrap_lines=True)
+    st.caption("Cole no fórum do AVA, em Adicionar tópico de discussão. Só um integrante posta em nome da equipe.")
+
+
 def relatorio_membro(mid, nome):
     """Monta o PDF individual com as contribuições e o que os colegas marcaram sobre a participação."""
     c = q("SELECT data, semana, tipo, descricao, horas, link, arquivo FROM contribuicoes "
@@ -701,6 +836,7 @@ PAGINAS = {
     "Cronograma": pg_cronograma,
     "Minhas contribuições": pg_contribuicoes,
     "Diário de campo": pg_diario,
+    "Entrega da semana": pg_entrega,
     "Avaliação entre pares": pg_pares,
     "Relatório em PDF": pg_exportar,
 }

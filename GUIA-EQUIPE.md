@@ -23,6 +23,9 @@ Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descri
 **Diário de campo**
 O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento.
 
+**Entrega da semana**
+Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
+
 **Avaliação entre pares**
 Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você marca, para cada colega, se ele *participou*, *participou pouco* ou *não participou* do trabalho, com comentário opcional. Já vem marcado "participou", então é só conferir e salvar. É anônimo: a tela mostra só os totais de cada pessoa.
 
@@ -35,8 +38,9 @@ Gera o relatório individual em PDF, com todas as contribuições da pessoa (com
 2. Depois de fazer algo, abrir **Minhas contribuições** e registrar com o link ou arquivo.
 3. Depois de ir à comunidade, preencher o **Diário de campo**.
 4. Olhar o **Painel** para ver o andamento.
-5. Nas rodadas de avaliação, preencher a **Avaliação entre pares**.
-6. No fim, baixar o **Relatório em PDF**.
+5. Na hora de entregar no AVA, abrir **Entrega da semana**, copiar o texto e colar no fórum.
+6. Nas rodadas de avaliação, preencher a **Avaliação entre pares**.
+7. No fim, baixar o **Relatório em PDF**.
 
 ## Onde ficam os dados
 
