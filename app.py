@@ -709,10 +709,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
             "COMUNIDADE ESCOLHIDA", campo(equipe["comunidade"], "Comunidade escolhida"), "",
             "JUSTIFICATIVA DA ESCOLHA", campo(equipe["justificativa"], "Justificativa da escolha"), "",
             "COMO A EQUIPE PRETENDE FAZER CONTATO COM A COMUNIDADE",
-            campo(equipe["contato"], "Como fazer contato com a comunidade"), "",
-            "SISTEMA DA EQUIPE",
-            "A equipe também usa o Gestor de Equipe (https://gestorequipe.duckdns.org) para organizar as tarefas "
-            "e registrar as contribuições de cada integrante.",
+            campo(equipe["contato"], "Como fazer contato com a comunidade"),
         ]
         return assunto, "\n".join(corpo), faltam
 
