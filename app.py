@@ -610,7 +610,7 @@ def pg_diario(u):
         d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
         tipo = c2.selectbox("Tipo", TIPOS_CAMPO)
         local = c3.text_input("Local / canal")
-        part = st.multiselect("Integrantes presentes", nomes, default=[u["nome"]])
+        part = st.multiselect("Integrantes presentes", nomes)
         ouvidas = st.text_input("Pessoas ouvidas (nome ou perfil)")
         relato = st.text_area("O que aconteceu / o que foi dito", height=150)
         aprend = st.text_area("Aprendizados, dores e necessidades percebidas")
