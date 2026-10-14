@@ -758,8 +758,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
         assunto = f"P2 - {nome_equipe}: Registro da Imersão"
         corpo = cabecalho + ["REGISTRO DA IMERSÃO", ""]
         if not diario_ids:
-            faltam.append("Registros do Diário de campo desta semana")
-            corpo += ["[A PREENCHER: nenhum registro do Diário de campo selecionado]", ""]
+            corpo += ["[A PREENCHER: o que a equipe ouviu e observou na comunidade]", ""]
         for i, d in enumerate(diario_ids, start=1):
             corpo.append(f"{i}. {br(d['data'])} - {d['tipo']}" + (f" - {d['local']}" if _txt(d["local"]) else ""))
             if _txt(d["participantes"]):
@@ -819,9 +818,7 @@ def pg_entrega(u):
                       WHERE d.data >= ? AND d.data < ? ORDER BY d.data, d.id""", (ini, fim))
         todos = q("""SELECT d.id, d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
                             d.aprendizados, d.link, d.arquivo FROM diario d ORDER BY d.data, d.id""")
-        if todos.empty:
-            st.info("Ainda não há registros no Diário de campo. Registre primeiro o que foi conversado ou observado na comunidade.")
-        else:
+        if not todos.empty:
             ids = st.multiselect(
                 "Registros do Diário de campo que entram na postagem", list(todos["id"]),
                 default=list(diario["id"]),
