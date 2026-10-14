@@ -36,12 +36,6 @@ class _PDF(FPDF):
             altura = largura * img.height / img.width
         self.set_y(10 + altura + 6)
 
-    def footer(self):
-        self.set_y(-12)
-        self.set_font("Helvetica", "", 8)
-        self.set_text_color(*CINZA)
-        self.cell(0, 6, f"Página {self.page_no()}", align="C")
-
 
 def _secao(pdf, titulo):
     pdf.ln(4)
