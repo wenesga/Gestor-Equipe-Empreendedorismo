@@ -703,7 +703,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
     cabecalho += [f"- {n}" for n in integrantes] + ["", f"LÍDER: {lider or '[A PREENCHER]'}", ""]
 
     if semana == 1:
-        assunto = f"P1 - Equipe {nome_equipe}: contrato de equipe e comunidade escolhida"
+        assunto = f"P1 - {nome_equipe}: contrato de equipe e comunidade escolhida"
         corpo = cabecalho + [
             "CONTRATO DE EQUIPE", campo(equipe["contrato"], "Contrato de equipe"), "",
             "COMUNIDADE ESCOLHIDA", campo(equipe["comunidade"], "Comunidade escolhida"), "",
@@ -714,7 +714,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
         return assunto, "\n".join(corpo), faltam
 
     if semana == 2:
-        assunto = f"P2 - Equipe {nome_equipe}: Registro da Imersão"
+        assunto = f"P2 - {nome_equipe}: Registro da Imersão"
         corpo = cabecalho + ["REGISTRO DA IMERSÃO", ""]
         if not diario_ids:
             faltam.append("Registros do Diário de campo desta semana")
@@ -735,7 +735,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
         return assunto, "\n".join(corpo).rstrip(), faltam
 
     # semanas 3 a 10: tarefas e contribuições registradas, para a equipe completar
-    assunto = f"Semana {semana} - Equipe {nome_equipe}: {titulo_semana}"
+    assunto = f"Semana {semana} - {nome_equipe}: {titulo_semana}"
     corpo = cabecalho + [f"ENTREGA DA SEMANA {semana}: {titulo_semana.upper()}", ""]
     tarefas = q("""SELECT t.titulo, t.status, m.nome AS responsavel FROM tarefas t
                    LEFT JOIN membros m ON m.id = t.responsavel_id WHERE t.semana = ? ORDER BY t.id""",
