@@ -820,7 +820,7 @@ def pg_entrega(u):
         todos = q("""SELECT d.id, d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
                             d.aprendizados, d.link, d.arquivo FROM diario d ORDER BY d.data, d.id""")
         if todos.empty:
-            st.info("Ainda não há registros no Diário de campo. Registre a visita à comunidade primeiro.")
+            st.info("Ainda não há registros no Diário de campo. Registre primeiro o que foi conversado ou observado na comunidade.")
         else:
             ids = st.multiselect(
                 "Registros do Diário de campo que entram na postagem", list(todos["id"]),
