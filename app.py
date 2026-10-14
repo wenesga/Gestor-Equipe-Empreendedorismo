@@ -494,9 +494,10 @@ def pg_cronograma(u):
     membros = q("SELECT id, nome FROM membros WHERE ativo = 1 ORDER BY nome")
     nomes = dict(zip(membros["id"], membros["nome"]))
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
-    for sem in sorted(t["semana"].unique()):
-        with st.expander(f"Semana {sem} · {br(t[t['semana'] == sem]['prazo'].iloc[0])}",
-                         expanded=(sem == semana_atual())):
+    for sem, prazo_semana, _ in CRONOGRAMA:
+        with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
+            if t[t["semana"] == sem].empty:
+                st.caption("Nenhuma tarefa nesta semana.")
             for _, r in t[t["semana"] == sem].iterrows():
                 c1, c2, c3 = st.columns([4, 2, 2])
                 c1.write(r["titulo"])
@@ -513,25 +514,29 @@ def pg_cronograma(u):
                        (resp, stt, int(r["id"])))
                     st.rerun()
             tarefas_sem = t[t["semana"] == sem]
-            with st.expander("Editar ou excluir uma tarefa"):
-                tid = st.selectbox("Tarefa", tarefas_sem["id"], key=f"ed{sem}",
-                                   format_func=lambda i, ts=tarefas_sem: ts[ts["id"] == i]["titulo"].iloc[0])
-                atual_txt = tarefas_sem[tarefas_sem["id"] == tid]["titulo"].iloc[0]
-                novo_txt = st.text_input("Texto da tarefa", atual_txt, key=f"edt{sem}_{tid}")
-                b1, b2 = st.columns(2)
-                if b1.button("Salvar texto", key=f"salva{sem}_{tid}") and novo_txt.strip():
-                    ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo_txt.strip(), int(tid)))
-                    st.rerun()
-                if b2.button("Excluir tarefa", key=f"exclui{sem}_{tid}"):
-                    ex("DELETE FROM tarefas WHERE id = ?", (int(tid),))
-                    st.rerun()
+            with st.expander("Editar ou excluir uma tarefa", expanded=False):
+                if tarefas_sem.empty:
+                    st.caption("Não há tarefa para editar.")
+                    tid = None
+                else:
+                    tid = st.selectbox("Tarefa", tarefas_sem["id"], key=f"ed{sem}",
+                                       format_func=lambda i, ts=tarefas_sem: ts[ts["id"] == i]["titulo"].iloc[0])
+                    atual_txt = tarefas_sem[tarefas_sem["id"] == tid]["titulo"].iloc[0]
+                    novo_txt = st.text_input("Texto da tarefa", atual_txt, key=f"edt{sem}_{tid}")
+                    b1, b2 = st.columns(2)
+                    if b1.button("Salvar texto", key=f"salva{sem}_{tid}") and novo_txt.strip():
+                        ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo_txt.strip(), int(tid)))
+                        st.rerun()
+                    if b2.button("Excluir tarefa", key=f"exclui{sem}_{tid}"):
+                        ex("DELETE FROM tarefas WHERE id = ?", (int(tid),))
+                        st.rerun()
             with st.form(f"nt{sem}", clear_on_submit=True):
                 novo = st.text_input("Nova tarefa nesta semana")
                 novo_resp = st.selectbox("Responsável", [None] + list(nomes), key=f"nr{sem}",
                                          format_func=lambda i: nomes.get(i, "—"))
                 if st.form_submit_button("Adicionar") and novo.strip():
                     ex("INSERT INTO tarefas(semana, prazo, titulo, responsavel_id) VALUES (?,?,?,?)",
-                       (int(sem), t[t["semana"] == sem]["prazo"].iloc[0], novo.strip(),
+                       (int(sem), prazo_semana, novo.strip(),
                         int(novo_resp) if novo_resp else None))
                     st.rerun()
 
