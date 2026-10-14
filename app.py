@@ -423,12 +423,15 @@ def pg_painel(u):
     for col, s in zip(cols, STATUS):
         n = int(t.loc[t["status"] == s, "n"].sum())
         col.metric(s, n)
-    prox = q("""SELECT t.semana, t.prazo, t.titulo, m.nome AS responsavel, t.status
+    pend = q("""SELECT t.semana AS Semana, t.prazo AS Prazo, t.titulo AS Tarefa,
+                       COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t LEFT JOIN membros m ON m.id = t.responsavel_id
-                WHERE t.status != 'Concluída' AND t.prazo >= ? ORDER BY t.prazo LIMIT 5""",
-             (date.today().isoformat(),))
-    st.subheader("Próximos prazos")
-    st.dataframe(prox.assign(prazo=prox["prazo"].map(br)), hide_index=True, width="stretch")
+                WHERE t.status != 'Concluída' ORDER BY t.prazo, t.id LIMIT 8""")
+    st.subheader("Pendências")
+    if pend.empty:
+        st.caption("Nenhuma pendência.")
+    else:
+        st.dataframe(pend.assign(Prazo=pend["Prazo"].map(br)), hide_index=True, width="stretch")
 
 
 def pg_equipe(u):

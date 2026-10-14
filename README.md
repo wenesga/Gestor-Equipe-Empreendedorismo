@@ -22,7 +22,7 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 
 ## ✨ O que ele faz
 
-- 📊 **Painel**: horas e registros por integrante, tarefas por status, próximos prazos, barra de progresso da semana e aviso de quem está há mais de 14 dias sem registrar nada.
+- 📊 **Painel**: horas e registros por integrante, tarefas por status, pendências, barra de progresso da semana e aviso de quem está há mais de 14 dias sem registrar nada.
 - 👥 **Equipe**: nome da equipe, polo, lista de integrantes e ferramentas do líder (código de entrada, redefinir PIN, passar a liderança, remover ou excluir integrante).
 - 🗓️ **Cronograma**: 10 semanas com prazo, responsável e status de cada tarefa.
 - 📝 **Minhas contribuições**: data, tipo, horas, descrição e evidência (link ou arquivo; as imagens aparecem em prévia).
