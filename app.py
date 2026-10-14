@@ -766,11 +766,6 @@ def pg_entrega(u):
     equipe = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
     membros = q("SELECT nome, lider FROM membros WHERE ativo = 1 ORDER BY nome")
     integrantes = list(membros["nome"])
-    extras = st.text_area("Integrantes que ainda não estão no sistema (um por linha)", height=80,
-                          placeholder="Ex.: Valéria Bispo Martins")
-    for nome in [e.strip() for e in extras.split("\n") if e.strip()]:
-        if nome not in integrantes:
-            integrantes.append(nome)
     lideres = membros[membros["lider"] == 1]["nome"]
     lider = lideres.iloc[0] if not lideres.empty else ""
 
