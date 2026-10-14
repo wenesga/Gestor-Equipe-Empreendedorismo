@@ -835,16 +835,16 @@ def pg_entrega(u):
     editado = chave_a in st.session_state or chave_m in st.session_state
     editando = st.session_state.get(chave_ed, False)
 
-    barra_1, barra_2 = st.columns([2, 2])
+    barra_1, barra_2, _ = st.columns([1, 1, 4])
     if editando:
-        if barra_1.button("✔ Concluir edição e copiar", key=f"conclui_{semana}", type="primary", width="stretch"):
+        if barra_1.button("Concluir", key=f"conclui_{semana}", type="primary", width="stretch"):
             st.session_state[chave_ed] = False
             st.rerun()
     else:
-        if barra_1.button("✏️ Editar o texto", key=f"edita_{semana}", type="primary", width="stretch"):
+        if barra_1.button("Editar", key=f"edita_{semana}", type="primary", width="stretch"):
             st.session_state[chave_ed] = True
             st.rerun()
-    if editado and barra_2.button("↩ Voltar ao texto original", key=f"orig_{semana}", width="stretch"):
+    if editado and barra_2.button("Restaurar", key=f"orig_{semana}", width="stretch"):
         for chave in (chave_a, chave_m, f"ti_{semana}", f"ta_{semana}"):
             st.session_state.pop(chave, None)
         st.session_state[chave_ed] = False
