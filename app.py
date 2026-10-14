@@ -756,7 +756,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
 
     if semana == 2:
         assunto = f"P2 - {nome_equipe}: Registro da Imersão"
-        corpo = cabecalho + ["REGISTRO DA IMERSÃO", ""]
+        corpo = []
         if not diario_ids:
             corpo += ["[A PREENCHER: o que a equipe ouviu e observou na comunidade]", ""]
         for i, d in enumerate(diario_ids, start=1):
@@ -776,7 +776,7 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
 
     # semanas 3 a 10: tarefas e contribuições registradas, para a equipe completar
     assunto = f"Semana {semana} - {nome_equipe}: {titulo_semana}"
-    corpo = cabecalho + [f"ENTREGA DA SEMANA {semana}: {titulo_semana.upper()}", ""]
+    corpo = []
     tarefas = q("""SELECT t.titulo, t.status, m.nome AS responsavel FROM tarefas t
                    LEFT JOIN membros m ON m.id = t.responsavel_id WHERE t.semana = ? ORDER BY t.id""",
                 (semana,))
