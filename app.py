@@ -757,8 +757,6 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
     if semana == 2:
         assunto = f"P2 - {nome_equipe}: Registro da Imersão"
         corpo = []
-        if not diario_ids:
-            corpo += ["[A PREENCHER: o que a equipe ouviu e observou na comunidade]", ""]
         for i, d in enumerate(diario_ids, start=1):
             corpo.append(f"{i}. {br(d['data'])} - {d['tipo']}" + (f" - {d['local']}" if _txt(d["local"]) else ""))
             if _txt(d["participantes"]):
@@ -821,7 +819,7 @@ def pg_entrega(u):
         if not todos.empty:
             ids = st.multiselect(
                 "Registros do Diário de campo que entram na postagem", list(todos["id"]),
-                default=list(diario["id"]),
+                default=[],
                 format_func=lambda i: f"{br(todos[todos['id'] == i]['data'].iloc[0])} - "
                                       f"{todos[todos['id'] == i]['tipo'].iloc[0]}")
             escolhidos = [r for _, r in todos[todos["id"].isin(ids)].iterrows()]
