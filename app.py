@@ -842,7 +842,7 @@ def pg_entrega(u):
     chave_a, chave_m = f"edit_assunto_{semana}", f"edit_msg_{semana}"
     chave_ed = f"editando_{semana}"
     editado = chave_a in st.session_state or chave_m in st.session_state
-    editando = st.session_state.get(chave_ed, False)
+    editando = st.session_state.get(chave_ed, mensagem == "")
 
     barra_1, barra_2, _ = st.columns([1, 1, 4])
     if editando:
