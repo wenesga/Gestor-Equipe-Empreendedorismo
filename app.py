@@ -641,7 +641,7 @@ def pg_diario(u):
             mostrar_evidencia(r["link"], r["arquivo"], f"d{r['id']}")
             if _txt(r["autor"]):
                 st.caption(f"Registrado por {r['autor']}")
-    editaveis = df if u["lider"] else df[df["autor"] == u["nome"]]
+    editaveis = df
     if not editaveis.empty:
         with st.expander("Editar ou excluir um registro"):
             did = st.selectbox("Registro", editaveis["id"], key="ed_diario",

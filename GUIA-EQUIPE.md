@@ -21,7 +21,7 @@ As 10 semanas da disciplina, cada uma com seu prazo. Em cada tarefa dá para esc
 Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descrição, com um link ou arquivo anexo. Cada um vê a própria lista e pode ver a da equipe toda. Cada um pode editar ou excluir apenas os próprios registros.
 
 **Diário de campo**
-O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento. Cada registro pode ser editado ou excluído por quem o escreveu (o líder também pode).
+O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento. Qualquer integrante pode editar ou excluir os registros do diário.
 
 **Entrega da semana**
 Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. Dá para editar o texto antes de copiar. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
