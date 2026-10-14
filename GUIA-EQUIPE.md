@@ -11,8 +11,8 @@ Na tela inicial, escolha seu nome e digite seu PIN de 4 dígitos. O líder cadas
 **Painel**
 Visão geral da equipe: quantos registros e horas cada pessoa tem, o último registro de cada um, quantas tarefas estão pendentes, em andamento e concluídas, e os próximos prazos. Se alguém passa 14 dias sem registrar nada, aparece um aviso.
 
-**Equipe e comunidade**
-Nome da equipe, polo, comunidade escolhida, justificativa, como faremos contato e o contrato de equipe. Também lista os integrantes. O líder pode adicionar pessoas e redefinir PINs.
+**Equipe**
+Nome da equipe, polo e lista de integrantes. O líder tem aqui as ferramentas para redefinir PIN, passar a liderança e remover integrantes.
 
 **Cronograma**
 As 10 semanas da disciplina, cada uma com seu prazo. Em cada tarefa dá para escolher o responsável e mudar o status (Pendente, Em andamento, Concluída). Também dá para acrescentar tarefas novas em qualquer semana.
@@ -24,7 +24,7 @@ Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descri
 O caderno da comunidade. Cada visita, entrevista, observação ou conversa vira um registro: data, local, quem da equipe estava, quem foi ouvido, o que aconteceu e o que aprendemos. Pode anexar foto ou documento. Qualquer integrante pode editar ou excluir os registros do diário.
 
 **Entrega da semana**
-Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. Dá para editar o texto antes de copiar, pelo botão Editar. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
+Escolha a semana e o sistema monta o texto da postagem do fórum do AVA com o que já está registrado: equipe, integrantes, líder, contrato, comunidade, Diário de campo, tarefas e contribuições. Dá para editar o texto antes de copiar, pelo botão Editar. Na Semana 1, é aqui que ficam o contrato, a comunidade, a justificativa e o contato. É só copiar o Assunto e a Mensagem e colar no fórum. O que ainda falta preencher aparece como [A PREENCHER].
 
 **Avaliação entre pares**
 Em cada rodada (Checkpoint 1, Checkpoint 2 e final), você marca, para cada colega, se ele *participou*, *participou pouco* ou *não participou* do trabalho, com comentário opcional. Já vem marcado "participou", então é só conferir e salvar. É anônimo: a tela mostra só os totais de cada pessoa.

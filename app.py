@@ -324,7 +324,7 @@ def registros_do_membro(mid):
 
 
 def slug(nome):
-    """'Equipe e comunidade' -> 'equipe-e-comunidade', para usar no endereço da página."""
+    """'Minhas contribuições' -> 'minhas-contribuicoes', para usar no endereço da página."""
     base = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().lower()
     return "-".join(base.split())
 
@@ -432,20 +432,13 @@ def pg_painel(u):
 
 
 def pg_equipe(u):
-    st.header("Equipe e comunidade")
+    st.header("Equipe")
     e = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
     with st.form("equipe"):
         nome = st.text_input("Nome da equipe", e["nome"] or "")
         polo = st.text_input("Polo", e["polo"] or "")
-        com = st.text_input("Comunidade escolhida", e["comunidade"] or "")
-        just = st.text_area("Justificativa da escolha", e["justificativa"] or "")
-        cont = st.text_area("Como a equipe fará contato com a comunidade", e["contato"] or "")
-        contrato = st.text_area(
-            "Contrato de Equipe (organização, comunicação, divisão de tarefas, participação)",
-            e["contrato"] or "", height=250)
         if st.form_submit_button("Salvar"):
-            ex("""UPDATE equipe SET nome=?, polo=?, comunidade=?, justificativa=?, contato=?,
-                  contrato=? WHERE id=1""", (nome, polo, com, just, cont, contrato))
+            ex("UPDATE equipe SET nome=?, polo=? WHERE id=1", (nome.strip(), polo.strip()))
             st.success("Salvo.")
     st.subheader("Integrantes")
     m = q("SELECT nome, CASE lider WHEN 1 THEN 'Líder' ELSE '' END AS papel FROM membros "
@@ -826,10 +819,21 @@ def pg_entrega(u):
                                       f"{todos[todos['id'] == i]['tipo'].iloc[0]}")
             escolhidos = [r for _, r in todos[todos["id"].isin(ids)].iterrows()]
 
+    if semana == 1:
+        with st.form("dados_p1"):
+            contrato = st.text_area("Contrato de equipe", _txt(equipe["contrato"]), height=260)
+            comunidade = st.text_input("Comunidade escolhida", _txt(equipe["comunidade"]))
+            justificativa = st.text_area("Justificativa da escolha", _txt(equipe["justificativa"]))
+            contato = st.text_area("Como a equipe fará contato com a comunidade", _txt(equipe["contato"]))
+            if st.form_submit_button("Salvar"):
+                ex("""UPDATE equipe SET contrato=?, comunidade=?, justificativa=?, contato=? WHERE id=1""",
+                   (contrato.strip(), comunidade.strip(), justificativa.strip(), contato.strip()))
+                st.rerun()
+        equipe = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
+
     assunto, mensagem, faltam = _texto_entrega(semana, equipe, integrantes, lider, escolhidos)
     if faltam:
-        st.warning("Ainda falta preencher: " + "; ".join(faltam) + ". "
-                   "Os campos da equipe ficam em Equipe e comunidade; o texto aparece abaixo como [A PREENCHER].")
+        st.warning("Ainda falta preencher: " + "; ".join(faltam) + ". O nome da equipe fica na tela Equipe.")
     chave_a, chave_m = f"edit_assunto_{semana}", f"edit_msg_{semana}"
     chave_ed = f"editando_{semana}"
     editado = chave_a in st.session_state or chave_m in st.session_state
@@ -891,7 +895,7 @@ def pg_exportar(u):
 
 PAGINAS = {
     "Painel": pg_painel,
-    "Equipe e comunidade": pg_equipe,
+    "Equipe": pg_equipe,
     "Cronograma": pg_cronograma,
     "Minhas contribuições": pg_contribuicoes,
     "Diário de campo": pg_diario,
