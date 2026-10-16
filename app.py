@@ -567,7 +567,7 @@ def pg_cronograma(u):
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
-            col_data, col_botao, _ = st.columns([3, 2, 4])
+            col_data, col_botao, _ = st.columns([5, 2, 2])
             col_data.caption(f"Começa em {br(prazo_semana)}"
                              + f" · Prazo {br(efetivos[sem])}")
             with col_botao.popover("Alterar data"):
