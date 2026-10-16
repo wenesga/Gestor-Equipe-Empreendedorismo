@@ -67,7 +67,7 @@ def init_db():
     with db() as con:
         con.executescript("""
         CREATE TABLE IF NOT EXISTS semanas(
-            semana INTEGER PRIMARY KEY, inicio TEXT NOT NULL);
+            semana INTEGER PRIMARY KEY, inicio TEXT NOT NULL, prazo TEXT);
         CREATE TABLE IF NOT EXISTS membros(
             id INTEGER PRIMARY KEY, nome TEXT UNIQUE NOT NULL, pin_hash TEXT NOT NULL,
             lider INTEGER DEFAULT 0, ativo INTEGER DEFAULT 1);
@@ -95,6 +95,8 @@ def init_db():
         if con.execute("SELECT COUNT(*) FROM tarefas").fetchone()[0] == 0:
             con.executemany(
                 "INSERT INTO tarefas(semana, prazo, titulo) VALUES (?,?,?)", CRONOGRAMA)
+        if "prazo" not in [r[1] for r in con.execute("PRAGMA table_info(semanas)")]:
+            con.execute("ALTER TABLE semanas ADD COLUMN prazo TEXT")
         if con.execute("SELECT COUNT(*) FROM semanas").fetchone()[0] == 0:
             con.executemany("INSERT INTO semanas(semana, inicio) VALUES (?,?)",
                             [(sem, inicio) for sem, inicio, _ in CRONOGRAMA])
@@ -181,6 +183,21 @@ def datas_semanas():
     except Exception:
         pass
     return padrao
+
+
+def prazos_semanas():
+    """Prazo de entrega de cada semana (vazio quando ainda não foi definido)."""
+    try:
+        salvos = q("SELECT semana, prazo FROM semanas")
+    except Exception:
+        return {}
+    return {int(r["semana"]): r["prazo"] for _, r in salvos.iterrows() if isinstance(r["prazo"], str)}
+
+
+def nome_curto(nome):
+    """'Kleyton Pereira Bueno Ramalho' -> 'Kleyton Ramalho' (primeiro e último nome)."""
+    partes = str(nome).split()
+    return nome if len(partes) <= 2 else f"{partes[0]} {partes[-1]}"
 
 
 def semana_atual():
@@ -430,7 +447,7 @@ def pg_painel(u):
     for col, s in zip(cols, STATUS):
         n = int(t.loc[t["status"] == s, "n"].sum())
         col.metric(s, n)
-    pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, t.titulo AS Tarefa,
+    pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, s.prazo AS Prazo, t.titulo AS Tarefa,
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t JOIN semanas s ON s.semana = t.semana
                 LEFT JOIN membros m ON m.id = t.responsavel_id
@@ -440,10 +457,25 @@ def pg_painel(u):
         st.caption("Nenhuma pendência.")
     else:
         atual = semana_atual()
-        tabela = pend.assign(Início=pend["Início"].map(br)).style.apply(
+
+        def periodo(linha):
+            inicio = br(linha["Início"])[:5]
+            prazo = br(linha["Prazo"])[:5]
+            return f"{inicio} a {prazo}" if prazo else inicio
+
+        pend["Datas"] = pend.apply(periodo, axis=1)
+        pend["Responsável"] = pend["Responsável"].map(nome_curto)
+        mostrar = pend[["Semana", "Datas", "Tarefa", "Responsável", "Status"]]
+        tabela = mostrar.style.apply(
             lambda linha: ["background-color: rgba(46, 125, 50, 0.35); font-weight: 600"
                            if linha["Semana"] == atual else "" for _ in linha], axis=1)
-        st.dataframe(tabela, hide_index=True, width="stretch")
+        st.dataframe(tabela, hide_index=True, width="stretch", column_config={
+            "Semana": st.column_config.NumberColumn("Sem.", width="small"),
+            "Datas": st.column_config.TextColumn("Datas", width="small"),
+            "Tarefa": st.column_config.TextColumn("Tarefa", width="large"),
+            "Responsável": st.column_config.TextColumn("Responsável", width="medium"),
+            "Status": st.column_config.TextColumn("Status", width="small"),
+        })
         st.caption("Em verde: a semana em vigor.")
 
 
@@ -510,14 +542,18 @@ def pg_cronograma(u):
     nomes = dict(zip(membros["id"], membros["nome"]))
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
     datas = datas_semanas()
+    prazos = prazos_semanas()
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
             col_data, col_botao, _ = st.columns([3, 2, 4])
-            col_data.caption(f"Começa em {br(prazo_semana)}")
+            col_data.caption(f"Começa em {br(prazo_semana)}"
+                             + (f" · Prazo {br(prazos[sem])}" if sem in prazos else ""))
             with col_botao.popover("Alterar data"):
                 nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY",
                                      key=f"dt{sem}")
+                novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(prazos[sem]) if sem in prazos else None,
+                                           format="DD/MM/YYYY", key=f"pz{sem}")
                 mover = st.checkbox("Mover as semanas seguintes junto", value=True, key=f"mv{sem}")
                 if st.button("Salvar", key=f"dts{sem}"):
                     dias = (nova - date.fromisoformat(prazo_semana)).days
@@ -525,20 +561,24 @@ def pg_cronograma(u):
                     with db() as con:
                         for n in alvo:
                             novo_inicio = (date.fromisoformat(datas[n]) + timedelta(days=dias)).isoformat()
-                            con.execute("UPDATE semanas SET inicio = ? WHERE semana = ?", (novo_inicio, n))
+                            novo_pz = (date.fromisoformat(prazos[n]) + timedelta(days=dias)).isoformat() if n in prazos else None
+                            con.execute("UPDATE semanas SET inicio = ?, prazo = ? WHERE semana = ?",
+                                        (novo_inicio, novo_pz, n))
+                        con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?",
+                                    (novo_prazo.isoformat() if novo_prazo else None, sem))
                         con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
                                     "WHERE semanas.semana = tarefas.semana)")
                     st.rerun()
             if t[t["semana"] == sem].empty:
                 st.caption("Nenhuma tarefa nesta semana.")
             for _, r in t[t["semana"] == sem].iterrows():
-                c1, c2, c3, c4 = st.columns([5, 2, 2, 1])
+                c1, c2, c3, c4 = st.columns([4, 3, 3, 1])
                 c1.write(r["titulo"])
                 ids = [None] + list(nomes)
                 atual = r["responsavel_id"]
                 idx = ids.index(int(atual)) if pd.notna(atual) else 0
                 resp = c2.selectbox("Responsável", ids, index=idx, key=f"r{r['id']}",
-                                    format_func=lambda i: nomes.get(i, "—"),
+                                    format_func=lambda i: nome_curto(nomes.get(i, "—")),
                                     label_visibility="collapsed")
                 stt = c3.selectbox("Status", STATUS, index=STATUS.index(r["status"]),
                                    key=f"s{r['id']}", label_visibility="collapsed")
@@ -558,7 +598,7 @@ def pg_cronograma(u):
             with st.form(f"nt{sem}", clear_on_submit=True):
                 novo = st.text_input("Nova tarefa nesta semana")
                 novo_resp = st.selectbox("Responsável", [None] + list(nomes), key=f"nr{sem}",
-                                         format_func=lambda i: nomes.get(i, "—"))
+                                         format_func=lambda i: nome_curto(nomes.get(i, "—")))
                 if st.form_submit_button("Adicionar") and novo.strip():
                     ex("INSERT INTO tarefas(semana, prazo, titulo, responsavel_id) VALUES (?,?,?,?)",
                        (int(sem), prazo_semana, novo.strip(),
