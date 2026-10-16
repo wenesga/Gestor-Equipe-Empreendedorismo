@@ -68,6 +68,8 @@ def db():
 def init_db():
     with db() as con:
         con.executescript("""
+        CREATE TABLE IF NOT EXISTS semanas(
+            semana INTEGER PRIMARY KEY, inicio TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS membros(
             id INTEGER PRIMARY KEY, nome TEXT UNIQUE NOT NULL, pin_hash TEXT NOT NULL,
             lider INTEGER DEFAULT 0, ativo INTEGER DEFAULT 1);
@@ -101,6 +103,9 @@ def init_db():
         if con.execute("SELECT COUNT(*) FROM tarefas").fetchone()[0] == 0:
             con.executemany(
                 "INSERT INTO tarefas(semana, prazo, titulo) VALUES (?,?,?)", CRONOGRAMA)
+        if con.execute("SELECT COUNT(*) FROM semanas").fetchone()[0] == 0:
+            con.executemany("INSERT INTO semanas(semana, inicio) VALUES (?,?)",
+                            [(sem, inicio) for sem, inicio, _ in CRONOGRAMA])
 
 
 def q(sql, params=()):
@@ -175,12 +180,23 @@ def mostrar_banner():
     )
 
 
+def datas_semanas():
+    """Data de início de cada semana (editável no Cronograma); cai no cronograma original se faltar."""
+    padrao = {sem: inicio for sem, inicio, _ in CRONOGRAMA}
+    try:
+        salvas = q("SELECT semana, inicio FROM semanas")
+        padrao.update({int(r["semana"]): r["inicio"] for _, r in salvas.iterrows()})
+    except Exception:
+        pass
+    return padrao
+
+
 def semana_atual():
     hoje = date.today().isoformat()
     atual = 1
-    for s, prazo, _ in CRONOGRAMA:
-        if hoje >= prazo:
-            atual = s
+    for sem, inicio in sorted(datas_semanas().items()):
+        if hoje >= inicio:
+            atual = sem
     return atual
 
 
@@ -423,10 +439,11 @@ def pg_painel(u):
     for col, s in zip(cols, STATUS):
         n = int(t.loc[t["status"] == s, "n"].sum())
         col.metric(s, n)
-    pend = q("""SELECT t.semana AS Semana, t.prazo AS Prazo, t.titulo AS Tarefa,
+    pend = q("""SELECT t.semana AS Semana, s.inicio AS Prazo, t.titulo AS Tarefa,
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
-                FROM tarefas t LEFT JOIN membros m ON m.id = t.responsavel_id
-                WHERE t.status != 'Concluída' ORDER BY t.prazo, t.id LIMIT 8""")
+                FROM tarefas t JOIN semanas s ON s.semana = t.semana
+                LEFT JOIN membros m ON m.id = t.responsavel_id
+                WHERE t.status != 'Concluída' ORDER BY s.inicio, t.id LIMIT 8""")
     st.subheader("Pendências")
     if pend.empty:
         st.caption("Nenhuma pendência.")
@@ -501,8 +518,26 @@ def pg_cronograma(u):
     membros = q("SELECT id, nome FROM membros WHERE ativo = 1 ORDER BY nome")
     nomes = dict(zip(membros["id"], membros["nome"]))
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
-    for sem, prazo_semana, _ in CRONOGRAMA:
+    datas = datas_semanas()
+    for sem, _, _ in CRONOGRAMA:
+        prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
+            col_data, col_botao, _ = st.columns([3, 2, 4])
+            col_data.caption(f"Começa em {br(prazo_semana)}")
+            with col_botao.popover("Alterar data"):
+                nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY",
+                                     key=f"dt{sem}")
+                mover = st.checkbox("Mover as semanas seguintes junto", value=True, key=f"mv{sem}")
+                if st.button("Salvar", key=f"dts{sem}"):
+                    dias = (nova - date.fromisoformat(prazo_semana)).days
+                    alvo = [n for n in datas if n >= sem] if mover else [sem]
+                    with db() as con:
+                        for n in alvo:
+                            novo_inicio = (date.fromisoformat(datas[n]) + timedelta(days=dias)).isoformat()
+                            con.execute("UPDATE semanas SET inicio = ? WHERE semana = ?", (novo_inicio, n))
+                        con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
+                                    "WHERE semanas.semana = tarefas.semana)")
+                    st.rerun()
             if t[t["semana"] == sem].empty:
                 st.caption("Nenhuma tarefa nesta semana.")
             for _, r in t[t["semana"] == sem].iterrows():
@@ -712,9 +747,9 @@ def pg_pares(u):
 
 def _janela_semana(semana):
     """Primeiro dia da semana e o primeiro dia da seguinte (para filtrar registros por data)."""
-    inicio = date.fromisoformat(next(p for s, p, _ in CRONOGRAMA if s == semana))
-    proxima = [p for s, p, _ in CRONOGRAMA if s == semana + 1]
-    fim = date.fromisoformat(proxima[0]) if proxima else inicio + timedelta(days=7)
+    datas = datas_semanas()
+    inicio = date.fromisoformat(datas[semana])
+    fim = date.fromisoformat(datas[semana + 1]) if semana + 1 in datas else inicio + timedelta(days=7)
     return inicio.isoformat(), fim.isoformat()
 
 
