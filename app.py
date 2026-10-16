@@ -485,7 +485,8 @@ def pg_painel(u):
             else:
                 fundo = ""
             celulas = "".join(
-                f'<td style="padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;">'
+                f'<td style="padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;'
+                f'{"" if c == "Tarefa" else " white-space: nowrap;"}">'
                 f"{html.escape(str(r[c]))}</td>" for c in mostrar.columns)
             linhas.append(f'<tr style="{fundo}">{celulas}</tr>')
         cabecalho = "".join(
