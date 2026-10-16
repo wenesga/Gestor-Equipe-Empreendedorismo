@@ -550,12 +550,14 @@ def pg_cronograma(u):
             col_data.caption(f"Começa em {br(prazo_semana)}"
                              + (f" · Prazo {br(prazos[sem])}" if sem in prazos else ""))
             with col_botao.popover("Alterar data"):
-                nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY",
-                                     key=f"dt{sem}")
-                novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(prazos[sem]) if sem in prazos else None,
-                                           format="DD/MM/YYYY", key=f"pz{sem}")
-                mover = st.checkbox("Mover as semanas seguintes junto", value=True, key=f"mv{sem}")
-                if st.button("Salvar", key=f"dts{sem}"):
+                with st.form(f"datas{sem}"):
+                    nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY")
+                    novo_prazo = st.date_input("Prazo de entrega",
+                                               date.fromisoformat(prazos[sem]) if sem in prazos else None,
+                                               format="DD/MM/YYYY")
+                    mover = st.checkbox("Mover as semanas seguintes junto", value=True)
+                    salvar = st.form_submit_button("Salvar")
+                if salvar:
                     dias = (nova - date.fromisoformat(prazo_semana)).days
                     alvo = [n for n in datas if n >= sem] if mover else [sem]
                     with db() as con:
