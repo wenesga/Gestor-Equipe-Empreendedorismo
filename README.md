@@ -12,7 +12,7 @@
 
 > *Saber **quem fez o quê**, com prova, e manter o projeto andando semana a semana.*
 
-Sistema web simples para uma equipe de estudantes organizar um projeto de empreendedorismo e inovação social: tarefas por semana, contribuição de cada integrante com evidência, diário de campo da comunidade, avaliação entre pares e relatório individual em PDF. Feito em Python com [Streamlit](https://streamlit.io), com os dados em um banco SQLite local, sem serviços externos.
+Sistema web simples para uma equipe de estudantes organizar um projeto de empreendedorismo e inovação social: tarefas por semana, contribuição de cada integrante com evidência, diário de campo da comunidade e relatório individual em PDF. Feito em Python com [Streamlit](https://streamlit.io), com os dados em um banco SQLite local, sem serviços externos.
 
 📌 *Criado para a disciplina de Empreendedorismo e Inovação, Licenciatura em Computação, UFT/UAB.*
 
@@ -28,8 +28,7 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 - 📝 **Minhas contribuições**: data, tipo, horas, descrição e evidência (link ou arquivo; as imagens aparecem em prévia).
 - 🌱 **Diário de campo**: visitas, entrevistas e observações na comunidade.
 - 📮 **Entrega da semana**: monta o texto da postagem do fórum (equipe, integrantes, contrato, comunidade, justificativa, contato, Diário de campo, tarefas e contribuições da semana) pronto para copiar e colar.
-- ⭐ **Avaliação entre pares**: cada integrante marca se cada colega *participou*, *participou pouco* ou *não participou*, com comentário opcional. É **anônima**: a equipe só vê os totais.
-- 📄 **Relatório em PDF**: contribuições com evidência e o que os colegas marcaram sobre a participação, com cabeçalho institucional.
+- 📄 **Relatório em PDF**: contribuições do integrante, com evidência e cabeçalho institucional.
 - 📱 **App instalável**: funciona no navegador e pode ser instalado no celular ou no computador.
 
 ## 🖼️ Telas
@@ -110,7 +109,6 @@ O sistema roda como um serviço comum de Streamlit atrás de um proxy HTTPS. Em 
 ## 🎨 Adaptar para outra equipe
 
 - 🗓️ **Textos e prazos** das 10 semanas: lista `CRONOGRAMA`, no início do `app.py`.
-- ⭐ **Rodadas** da avaliação: lista `RODADAS`, no início do `app.py`.
 - 🖼️ **Identidade visual**: troque os arquivos de `imagens/` e `static/` e a cor em `.streamlit/config.toml`.
 
 ## 📜 Licença

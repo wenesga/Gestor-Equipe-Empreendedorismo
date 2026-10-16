@@ -1,7 +1,7 @@
 """Gestor de Equipe - Empreendedorismo e Inovação (LCOMP-EI-2026-2).
 
 Registra contribuições com evidência, diário de campo, cronograma das 10
-semanas e avaliação entre pares, para comprovar a participação individual.
+semanas e relatório individual, para comprovar a participação individual.
 Persistência: SQLite (data/equipe.db) + pasta data/uploads.
 """
 import base64
@@ -45,8 +45,6 @@ TIPOS_CONTRIB = ["Pesquisa", "Visita/contato com a comunidade", "Redação/docum
                  "Design/prototipação", "Reunião da equipe", "Apresentação/pitch",
                  "Coordenação/gestão", "Outro"]
 TIPOS_CAMPO = ["Visita", "Entrevista", "Observação", "Conversa informal", "Devolutiva"]
-RODADAS = ["Checkpoint 1 (sem. 3)", "Checkpoint 2 (sem. 5-6)", "Avaliação final (sem. 10)"]
-RESPOSTAS = {"participou": "✅ Participou", "pouco": "🟡 Participou pouco", "nao": "❌ Não participou"}
 DIAS_ALERTA = 14
 COOKIE_SESSAO = "gestor_sessao"
 EXT_IMAGEM = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
@@ -90,12 +88,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS sessoes(
             token_hash TEXT PRIMARY KEY, membro_id INTEGER NOT NULL REFERENCES membros(id),
             expira_em TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS participacoes(
-            id INTEGER PRIMARY KEY, rodada TEXT NOT NULL,
-            avaliador_id INTEGER NOT NULL REFERENCES membros(id),
-            avaliado_id INTEGER NOT NULL REFERENCES membros(id),
-            resposta TEXT NOT NULL, comentario TEXT,
-            UNIQUE(rodada, avaliador_id, avaliado_id));
         """)
         con.execute("INSERT OR IGNORE INTO equipe(id) VALUES (1)")
         if "codigo" not in [r[1] for r in con.execute("PRAGMA table_info(equipe)")]:
@@ -334,7 +326,6 @@ def registros_do_membro(mid):
         return con.execute(
             """SELECT (SELECT COUNT(*) FROM contribuicoes WHERE membro_id = :m)
                     + (SELECT COUNT(*) FROM diario WHERE autor_id = :m)
-                    + (SELECT COUNT(*) FROM participacoes WHERE avaliador_id = :m OR avaliado_id = :m)
                     + (SELECT COUNT(*) FROM tarefas WHERE responsavel_id = :m)""",
             {"m": mid}).fetchone()[0]
 
@@ -703,48 +694,6 @@ def pg_diario(u):
                 st.rerun()
 
 
-def pg_pares(u):
-    st.header("Avaliação entre pares")
-    st.caption("Marque se cada colega participou do trabalho. É anônimo: a equipe só vê os totais.")
-    rodada = st.selectbox("Rodada", RODADAS)
-    outros = q("SELECT id, nome FROM membros WHERE ativo = 1 AND id != ? ORDER BY nome",
-               (int(u["id"]),))
-    if outros.empty:
-        st.info("Ainda não há outros integrantes para avaliar.")
-    else:
-        salvas = q("""SELECT avaliado_id, resposta, comentario FROM participacoes
-                      WHERE rodada = ? AND avaliador_id = ?""", (rodada, int(u["id"])))
-        anteriores = {int(r["avaliado_id"]): r for _, r in salvas.iterrows()}
-        with st.form(f"participacao_{rodada}"):
-            escolhas = {}
-            for _, o in outros.iterrows():
-                ant = anteriores.get(int(o["id"]))
-                st.markdown(f"**{o['nome']}**")
-                resp = st.segmented_control(
-                    "Participou do trabalho?", list(RESPOSTAS), format_func=RESPOSTAS.get,
-                    default=ant["resposta"] if ant is not None else "participou",
-                    key=f"resp_{rodada}_{o['id']}", label_visibility="collapsed")
-                com = st.text_input("Comentário (opcional)", _txt(ant["comentario"]) if ant is not None else "",
-                                    key=f"com_{rodada}_{o['id']}")
-                escolhas[int(o["id"])] = (resp or "participou", com.strip())
-            if st.form_submit_button("Salvar"):
-                for avaliado, (resp, com) in escolhas.items():
-                    ex("""INSERT INTO participacoes(rodada, avaliador_id, avaliado_id, resposta, comentario)
-                          VALUES (?,?,?,?,?)
-                          ON CONFLICT(rodada, avaliador_id, avaliado_id) DO UPDATE SET
-                          resposta=excluded.resposta, comentario=excluded.comentario""",
-                       (rodada, int(u["id"]), avaliado, resp, com))
-                st.success("Salvo.")
-    st.subheader("O que os colegas marcaram")
-    resumo = q("""SELECT m.nome AS Integrante,
-                         COALESCE(SUM(p.resposta = 'participou'), 0) AS Participou,
-                         COALESCE(SUM(p.resposta = 'pouco'), 0) AS "Participou pouco",
-                         COALESCE(SUM(p.resposta = 'nao'), 0) AS "Não participou"
-                  FROM membros m LEFT JOIN participacoes p ON p.avaliado_id = m.id AND p.rodada = ?
-                  WHERE m.ativo = 1 GROUP BY m.id ORDER BY m.nome""", (rodada,))
-    st.dataframe(resumo, hide_index=True, width="stretch")
-
-
 def _janela_semana(semana):
     """Primeiro dia da semana e o primeiro dia da seguinte (para filtrar registros por data)."""
     datas = datas_semanas()
@@ -908,16 +857,11 @@ def pg_entrega(u):
 
 
 def relatorio_membro(mid, nome):
-    """Monta o PDF individual com as contribuições e o que os colegas marcaram sobre a participação."""
+    """Monta o PDF individual com as contribuições do integrante."""
     c = q("SELECT data, semana, tipo, descricao, horas, link, arquivo FROM contribuicoes "
           "WHERE membro_id = ? ORDER BY data", (mid,))
-    med = q("""SELECT rodada AS Rodada,
-                      SUM(resposta = 'participou') AS Participou,
-                      SUM(resposta = 'pouco') AS "Participou pouco",
-                      SUM(resposta = 'nao') AS "Não participou"
-               FROM participacoes WHERE avaliado_id = ? GROUP BY rodada""", (mid,))
     e = q("SELECT nome, comunidade FROM equipe WHERE id = 1").iloc[0]
-    return gerar_pdf(nome, e["nome"], e["comunidade"], c, med)
+    return gerar_pdf(nome, e["nome"], e["comunidade"], c)
 
 
 def pg_exportar(u):
@@ -940,7 +884,6 @@ PAGINAS = {
     "Minhas contribuições": pg_contribuicoes,
     "Diário de campo": pg_diario,
     "Entrega da semana": pg_entrega,
-    "Avaliação entre pares": pg_pares,
     "Relatório em PDF": pg_exportar,
 }
 
