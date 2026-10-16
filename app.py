@@ -430,7 +430,7 @@ def pg_painel(u):
     for col, s in zip(cols, STATUS):
         n = int(t.loc[t["status"] == s, "n"].sum())
         col.metric(s, n)
-    pend = q("""SELECT t.semana AS Semana, s.inicio AS Prazo, t.titulo AS Tarefa,
+    pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, t.titulo AS Tarefa,
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t JOIN semanas s ON s.semana = t.semana
                 LEFT JOIN membros m ON m.id = t.responsavel_id
@@ -440,7 +440,7 @@ def pg_painel(u):
         st.caption("Nenhuma pendência.")
     else:
         atual = semana_atual()
-        tabela = pend.assign(Prazo=pend["Prazo"].map(br)).style.apply(
+        tabela = pend.assign(Início=pend["Início"].map(br)).style.apply(
             lambda linha: ["background-color: rgba(46, 125, 50, 0.35); font-weight: 600"
                            if linha["Semana"] == atual else "" for _ in linha], axis=1)
         st.dataframe(tabela, hide_index=True, width="stretch")
