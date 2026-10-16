@@ -605,15 +605,16 @@ def pg_cronograma(u):
                                     label_visibility="collapsed")
                 stt = c3.selectbox("Status", STATUS, index=STATUS.index(r["status"]),
                                    key=f"s{r['id']}", label_visibility="collapsed")
-                with c4.popover("Editar", width="content"):
-                    novo_txt = st.text_input("Texto da tarefa", r["titulo"], key=f"edt{r['id']}")
-                    b1, b2 = st.columns(2)
-                    if b1.button("Salvar", key=f"salva{r['id']}", width="stretch") and novo_txt.strip():
-                        ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo_txt.strip(), int(r["id"])))
-                        st.rerun()
-                    if b2.button("Excluir", key=f"exclui{r['id']}", width="stretch"):
-                        ex("DELETE FROM tarefas WHERE id = ?", (int(r["id"]),))
-                        st.rerun()
+                with c4.container(key=f"edita_{r['id']}"):
+                    with st.popover("Editar", width="content"):
+                        novo_txt = st.text_input("Texto da tarefa", r["titulo"], key=f"edt{r['id']}")
+                        b1, b2 = st.columns(2)
+                        if b1.button("Salvar", key=f"salva{r['id']}", width="stretch") and novo_txt.strip():
+                            ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo_txt.strip(), int(r["id"])))
+                            st.rerun()
+                        if b2.button("Excluir", key=f"exclui{r['id']}", width="stretch"):
+                            ex("DELETE FROM tarefas WHERE id = ?", (int(r["id"]),))
+                            st.rerun()
                 if resp != (int(atual) if pd.notna(atual) else None) or stt != r["status"]:
                     ex("UPDATE tarefas SET responsavel_id=?, status=? WHERE id=?",
                        (resp, stt, int(r["id"])))
@@ -1109,6 +1110,10 @@ def aplicar_estilo():
     .stElementContainer:has([data-testid="stIFrame"]),
     .stElementContainer:has(style) {
         display: none;
+    }
+    /* Botão Editar de cada tarefa alinhado à direita da linha. */
+    div[class*="st-key-edita_"] {
+        align-items: flex-end;
     }
     div[role="tablist"] {
         gap: 4px;
