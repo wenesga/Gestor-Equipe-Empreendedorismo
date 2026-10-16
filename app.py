@@ -458,14 +458,10 @@ def pg_painel(u):
     else:
         atual = semana_atual()
 
-        def periodo(linha):
-            inicio = br(linha["Início"])[:5]
-            prazo = br(linha["Prazo"])[:5] or "-"
-            return f"{inicio} a {prazo}"
-
-        pend["Datas"] = pend.apply(periodo, axis=1)
+        pend["Início"] = pend["Início"].map(lambda d: br(d)[:5])
+        pend["Prazo"] = pend["Prazo"].map(lambda d: br(d)[:5])
         pend["Responsável"] = pend["Responsável"].map(nome_curto)
-        mostrar = pend[["Semana", "Datas", "Tarefa", "Responsável", "Status"]]
+        mostrar = pend[["Semana", "Início", "Prazo", "Tarefa", "Responsável", "Status"]]
         linhas = []
         for _, r in mostrar.iterrows():
             fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;" if r["Semana"] == atual else ""
