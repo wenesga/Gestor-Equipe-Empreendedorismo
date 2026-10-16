@@ -195,9 +195,9 @@ def prazos_semanas():
 
 
 def nome_curto(nome):
-    """'Kleyton Pereira Bueno Ramalho' -> 'Kleyton Ramalho' (primeiro e último nome)."""
+    """'Kleyton Pereira Bueno Ramalho' -> 'Kleyton' (só o primeiro nome, onde falta espaço)."""
     partes = str(nome).split()
-    return nome if len(partes) <= 2 else f"{partes[0]} {partes[-1]}"
+    return partes[0] if partes else str(nome)
 
 
 def semana_atual():
@@ -466,16 +466,20 @@ def pg_painel(u):
         pend["Datas"] = pend.apply(periodo, axis=1)
         pend["Responsável"] = pend["Responsável"].map(nome_curto)
         mostrar = pend[["Semana", "Datas", "Tarefa", "Responsável", "Status"]]
-        tabela = mostrar.style.apply(
-            lambda linha: ["background-color: rgba(46, 125, 50, 0.35); font-weight: 600"
-                           if linha["Semana"] == atual else "" for _ in linha], axis=1)
-        st.dataframe(tabela, hide_index=True, width="stretch", column_config={
-            "Semana": st.column_config.NumberColumn("Sem.", width="small"),
-            "Datas": st.column_config.TextColumn("Datas", width="small"),
-            "Tarefa": st.column_config.TextColumn("Tarefa", width="large"),
-            "Responsável": st.column_config.TextColumn("Responsável", width="medium"),
-            "Status": st.column_config.TextColumn("Status", width="small"),
-        })
+        linhas = []
+        for _, r in mostrar.iterrows():
+            fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;" if r["Semana"] == atual else ""
+            celulas = "".join(
+                f'<td style="padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;">'
+                f"{html.escape(str(r[c]))}</td>" for c in mostrar.columns)
+            linhas.append(f'<tr style="{fundo}">{celulas}</tr>')
+        cabecalho = "".join(
+            f'<th style="text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.4); '
+            f'opacity: 0.7; font-weight: 500;">{"Sem." if c == "Semana" else c}</th>' for c in mostrar.columns)
+        st.markdown(
+            f'<table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">'
+            f"<thead><tr>{cabecalho}</tr></thead><tbody>{''.join(linhas)}</tbody></table>",
+            unsafe_allow_html=True)
         st.caption("Em verde: a semana em vigor.")
 
 
@@ -572,7 +576,7 @@ def pg_cronograma(u):
             if t[t["semana"] == sem].empty:
                 st.caption("Nenhuma tarefa nesta semana.")
             for _, r in t[t["semana"] == sem].iterrows():
-                c1, c2, c3, c4 = st.columns([4, 3, 3, 1])
+                c1, c2, c3, c4 = st.columns([5, 2, 2, 1])
                 c1.write(r["titulo"])
                 ids = [None] + list(nomes)
                 atual = r["responsavel_id"]
