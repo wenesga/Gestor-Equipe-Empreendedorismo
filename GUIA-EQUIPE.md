@@ -9,7 +9,7 @@ Na tela inicial, escolha seu nome e digite seu PIN de 4 dígitos. O líder cadas
 ## O que tem em cada tela
 
 **Painel**
-Visão geral da equipe: quantos registros e horas cada pessoa tem, o último registro de cada um, quantas tarefas estão pendentes, em andamento e concluídas, e a lista de pendências. Se alguém passa 14 dias sem registrar nada, aparece um aviso.
+Visão geral da equipe: quantos registros e horas cada pessoa tem, o último registro de cada um, quantas tarefas estão pendentes, em andamento e concluídas, e a lista de pendências, com início e prazo. Se alguém passa 14 dias sem registrar nada, aparece um aviso.
 
 **Equipe**
 Nome da equipe e lista de integrantes. O líder tem aqui as ferramentas para redefinir PIN, passar a liderança e remover integrantes.

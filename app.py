@@ -194,6 +194,21 @@ def prazos_semanas():
     return {int(r["semana"]): r["prazo"] for _, r in salvos.iterrows() if isinstance(r["prazo"], str)}
 
 
+def prazos_efetivos():
+    """Prazo de cada semana: o definido à mão ou, se não houver, o início da semana seguinte."""
+    datas = datas_semanas()
+    definidos = prazos_semanas()
+    efetivos = {}
+    for sem in sorted(datas):
+        if sem in definidos:
+            efetivos[sem] = definidos[sem]
+        elif sem + 1 in datas:
+            efetivos[sem] = datas[sem + 1]
+        else:
+            efetivos[sem] = (date.fromisoformat(datas[sem]) + timedelta(days=7)).isoformat()
+    return efetivos
+
+
 def nome_curto(nome):
     """'Kleyton Pereira Bueno Ramalho' -> 'Kleyton' (só o primeiro nome, onde falta espaço)."""
     partes = str(nome).split()
@@ -451,20 +466,24 @@ def pg_painel(u):
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t JOIN semanas s ON s.semana = t.semana
                 LEFT JOIN membros m ON m.id = t.responsavel_id
-                WHERE t.status != 'Concluída' ORDER BY s.inicio, t.id LIMIT 8""")
+                WHERE t.status != 'Concluída' ORDER BY s.inicio, t.id""")
     st.subheader("Pendências")
     if pend.empty:
         st.caption("Nenhuma pendência.")
     else:
         atual = semana_atual()
 
+        efetivos = prazos_efetivos()
+        pend["Prazo"] = pend["Semana"].map(lambda sem: br(efetivos.get(int(sem), ""))[:5])
         pend["Início"] = pend["Início"].map(lambda d: br(d)[:5])
-        pend["Prazo"] = pend["Prazo"].map(lambda d: br(d)[:5])
         pend["Responsável"] = pend["Responsável"].map(nome_curto)
         mostrar = pend[["Semana", "Início", "Prazo", "Tarefa", "Responsável", "Status"]]
         linhas = []
         for _, r in mostrar.iterrows():
-            fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;" if r["Semana"] == atual else ""
+            if r["Semana"] == atual:
+                fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;"
+            else:
+                fundo = ""
             celulas = "".join(
                 f'<td style="padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;">'
                 f"{html.escape(str(r[c]))}</td>" for c in mostrar.columns)
@@ -543,17 +562,17 @@ def pg_cronograma(u):
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
     datas = datas_semanas()
     prazos = prazos_semanas()
+    efetivos = prazos_efetivos()
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
             col_data, col_botao, _ = st.columns([3, 2, 4])
             col_data.caption(f"Começa em {br(prazo_semana)}"
-                             + (f" · Prazo {br(prazos[sem])}" if sem in prazos else ""))
+                             + f" · Prazo {br(efetivos[sem])}")
             with col_botao.popover("Alterar data"):
                 with st.form(f"datas{sem}"):
                     nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY")
-                    novo_prazo = st.date_input("Prazo de entrega",
-                                               date.fromisoformat(prazos[sem]) if sem in prazos else None,
+                    novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(efetivos[sem]),
                                                format="DD/MM/YYYY")
                     mover = st.checkbox("Mover as semanas seguintes junto", value=True)
                     salvar = st.form_submit_button("Salvar")
@@ -566,8 +585,9 @@ def pg_cronograma(u):
                             novo_pz = (date.fromisoformat(prazos[n]) + timedelta(days=dias)).isoformat() if n in prazos else None
                             con.execute("UPDATE semanas SET inicio = ?, prazo = ? WHERE semana = ?",
                                         (novo_inicio, novo_pz, n))
-                        con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?",
-                                    (novo_prazo.isoformat() if novo_prazo else None, sem))
+                        if novo_prazo and novo_prazo.isoformat() != efetivos[sem]:
+                            con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?",
+                                        (novo_prazo.isoformat(), sem))
                         con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
                                     "WHERE semanas.semana = tarefas.semana)")
                     st.rerun()
