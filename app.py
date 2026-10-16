@@ -460,8 +460,8 @@ def pg_painel(u):
 
         def periodo(linha):
             inicio = br(linha["Início"])[:5]
-            prazo = br(linha["Prazo"])[:5]
-            return f"{inicio} a {prazo}" if prazo else inicio
+            prazo = br(linha["Prazo"])[:5] or "-"
+            return f"{inicio} a {prazo}"
 
         pend["Datas"] = pend.apply(periodo, axis=1)
         pend["Responsável"] = pend["Responsável"].map(nome_curto)
