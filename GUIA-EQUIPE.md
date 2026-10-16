@@ -15,7 +15,7 @@ Visão geral da equipe: quantos registros e horas cada pessoa tem, o último reg
 Nome da equipe e lista de integrantes. O líder tem aqui as ferramentas para redefinir PIN, passar a liderança e remover integrantes.
 
 **Cronograma**
-As 10 semanas da disciplina, cada uma com seu prazo. Em cada tarefa dá para escolher o responsável e mudar o status (Pendente, Em andamento, Concluída). Também dá para acrescentar tarefas novas em qualquer semana.
+As 10 semanas da disciplina, cada uma com a data de início, que dá para alterar (as semanas seguintes acompanham). Em cada tarefa dá para escolher o responsável e mudar o status (Pendente, Em andamento, Concluída). Também dá para acrescentar tarefas novas em qualquer semana.
 
 **Minhas contribuições**
 Onde cada um registra o que fez: data, semana, tipo de atividade, horas e descrição, com um link ou arquivo anexo. Cada um vê a própria lista e pode ver a da equipe toda. Cada um pode editar ou excluir apenas os próprios registros.
