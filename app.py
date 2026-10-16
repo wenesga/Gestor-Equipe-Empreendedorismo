@@ -605,7 +605,7 @@ def pg_cronograma(u):
                                     label_visibility="collapsed")
                 stt = c3.selectbox("Status", STATUS, index=STATUS.index(r["status"]),
                                    key=f"s{r['id']}", label_visibility="collapsed")
-                with c4.popover("Editar", width="stretch"):
+                with c4.popover("Editar", width="content"):
                     novo_txt = st.text_input("Texto da tarefa", r["titulo"], key=f"edt{r['id']}")
                     b1, b2 = st.columns(2)
                     if b1.button("Salvar", key=f"salva{r['id']}", width="stretch") and novo_txt.strip():
