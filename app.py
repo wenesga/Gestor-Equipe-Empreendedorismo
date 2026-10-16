@@ -595,7 +595,7 @@ def pg_cronograma(u):
             if t[t["semana"] == sem].empty:
                 st.caption("Nenhuma tarefa nesta semana.")
             for _, r in t[t["semana"] == sem].iterrows():
-                c1, c2, c3, c4 = st.columns([5, 2, 2, 1])
+                c1, c2, c3, c4 = st.columns([4, 2, 2, 2])
                 c1.write(r["titulo"])
                 ids = [None] + list(nomes)
                 atual = r["responsavel_id"]
@@ -605,7 +605,7 @@ def pg_cronograma(u):
                                     label_visibility="collapsed")
                 stt = c3.selectbox("Status", STATUS, index=STATUS.index(r["status"]),
                                    key=f"s{r['id']}", label_visibility="collapsed")
-                with c4.popover("⋯"):
+                with c4.popover("Editar", width="stretch"):
                     novo_txt = st.text_input("Texto da tarefa", r["titulo"], key=f"edt{r['id']}")
                     b1, b2 = st.columns(2)
                     if b1.button("Salvar", key=f"salva{r['id']}", width="stretch") and novo_txt.strip():
