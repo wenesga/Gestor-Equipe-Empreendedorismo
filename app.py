@@ -567,31 +567,32 @@ def pg_cronograma(u):
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
-            col_data, col_botao, _ = st.columns([5, 2, 2])
+            col_data, _, _, col_botao = st.columns([4, 2, 2, 2])
             col_data.caption(f"Começa em {br(prazo_semana)}"
                              + f" · Prazo {br(efetivos[sem])}")
-            with col_botao.popover("Alterar data"):
-                with st.form(f"datas{sem}"):
-                    nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY")
-                    novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(efetivos[sem]),
-                                               format="DD/MM/YYYY")
-                    mover = st.checkbox("Mover as semanas seguintes junto", value=True)
-                    salvar = st.form_submit_button("Salvar")
-                if salvar:
-                    dias = (nova - date.fromisoformat(prazo_semana)).days
-                    alvo = [n for n in datas if n >= sem] if mover else [sem]
-                    with db() as con:
-                        for n in alvo:
-                            novo_inicio = (date.fromisoformat(datas[n]) + timedelta(days=dias)).isoformat()
-                            novo_pz = (date.fromisoformat(prazos[n]) + timedelta(days=dias)).isoformat() if n in prazos else None
-                            con.execute("UPDATE semanas SET inicio = ?, prazo = ? WHERE semana = ?",
-                                        (novo_inicio, novo_pz, n))
-                        if novo_prazo and novo_prazo.isoformat() != efetivos[sem]:
-                            con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?",
-                                        (novo_prazo.isoformat(), sem))
-                        con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
-                                    "WHERE semanas.semana = tarefas.semana)")
-                    st.rerun()
+            with col_botao.container(key=f"altdata_{sem}"):
+                with st.popover("Alterar data", width="content"):
+                    with st.form(f"datas{sem}"):
+                        nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY")
+                        novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(efetivos[sem]),
+                                                   format="DD/MM/YYYY")
+                        mover = st.checkbox("Mover as semanas seguintes junto", value=True)
+                        salvar = st.form_submit_button("Salvar")
+                    if salvar:
+                        dias = (nova - date.fromisoformat(prazo_semana)).days
+                        alvo = [n for n in datas if n >= sem] if mover else [sem]
+                        with db() as con:
+                            for n in alvo:
+                                novo_inicio = (date.fromisoformat(datas[n]) + timedelta(days=dias)).isoformat()
+                                novo_pz = (date.fromisoformat(prazos[n]) + timedelta(days=dias)).isoformat() if n in prazos else None
+                                con.execute("UPDATE semanas SET inicio = ?, prazo = ? WHERE semana = ?",
+                                            (novo_inicio, novo_pz, n))
+                            if novo_prazo and novo_prazo.isoformat() != efetivos[sem]:
+                                con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?",
+                                            (novo_prazo.isoformat(), sem))
+                            con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
+                                        "WHERE semanas.semana = tarefas.semana)")
+                        st.rerun()
             if t[t["semana"] == sem].empty:
                 st.caption("Nenhuma tarefa nesta semana.")
             for _, r in t[t["semana"] == sem].iterrows():
@@ -1112,7 +1113,7 @@ def aplicar_estilo():
         display: none;
     }
     /* Botão Editar de cada tarefa alinhado à direita da linha. */
-    div[class*="st-key-edita_"] {
+    div[class*="st-key-edita_"], div[class*="st-key-altdata_"] {
         align-items: flex-end;
     }
     div[role="tablist"] {
