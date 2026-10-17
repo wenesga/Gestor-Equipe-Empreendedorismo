@@ -404,7 +404,7 @@ def tela_inicial():
             nome = " ".join(st.text_input("Seu nome completo").split())
             pin1 = st.text_input("Crie um PIN de 4 dígitos", type="password", max_chars=4)
             pin2 = st.text_input("Repita o PIN", type="password", max_chars=4)
-            codigo = st.text_input("Código da equipe (os colegas vão digitar para entrar)").strip()
+            codigo = st.text_input("Código da equipe (os colegas vão digitar para entrar)", type="password").strip()
             if st.form_submit_button("Criar equipe", type="primary"):
                 if not nome or not codigo:
                     st.error("Informe seu nome e o código da equipe.")
@@ -436,7 +436,7 @@ def tela_inicial():
     else:
         with st.form("cadastro"):
             nome = " ".join(st.text_input("Seu nome completo").split())
-            codigo = st.text_input("Código da equipe").strip()
+            codigo = st.text_input("Código da equipe", type="password").strip()
             pin1 = st.text_input("Crie um PIN de 4 dígitos", type="password", max_chars=4)
             pin2 = st.text_input("Repita o PIN", type="password", max_chars=4)
             if st.form_submit_button("Entrar no grupo", type="primary"):
@@ -620,7 +620,7 @@ def pg_equipe(u):
         st.subheader("Código da equipe")
         atual = q("SELECT codigo FROM equipe WHERE id = 1")["codigo"].iloc[0] or ""
         with st.form("codigo"):
-            novo_codigo = st.text_input("Código que os colegas digitam para entrar", atual).strip()
+            novo_codigo = st.text_input("Código que os colegas digitam para entrar", atual, type="password").strip()
             if st.form_submit_button("Salvar código", type="primary") and novo_codigo:
                 ex("UPDATE equipe SET codigo = ? WHERE id = 1", (novo_codigo,))
                 sucesso("Código atualizado.")
