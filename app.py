@@ -552,7 +552,8 @@ def pg_painel(u):
         grafico_horas(c)
     t = q("SELECT status, COUNT(*) AS n FROM tarefas GROUP BY status")
     st.subheader("Tarefas")
-    cols = st.columns(3)
+    with st.container(key="linha_metricas"):
+        cols = st.columns(3)
     for col, s in zip(cols, STATUS):
         n = int(t.loc[t["status"] == s, "n"].sum())
         col.metric(s, n)
@@ -1336,6 +1337,20 @@ def aplicar_estilo():
         div[class*="st-key-linha_icone_s"] [data-testid="stColumn"]:nth-child(3),
         div[class*="st-key-linha_icone_s"] [data-testid="stColumn"]:nth-child(5) {
             display: none;
+        }
+        div[class*="st-key-linha_metricas"] [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.5rem !important;
+        }
+        div[class*="st-key-linha_metricas"] [data-testid="stColumn"] {
+            min-width: 0 !important;
+            flex: 1 1 0 !important;
+        }
+        div[class*="st-key-linha_metricas"] [data-testid="stMetricLabel"] * {
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            font-size: 0.8rem !important;
         }
         div[class*="st-key-cab_tabela_"] {
             display: none;
