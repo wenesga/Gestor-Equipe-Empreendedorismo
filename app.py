@@ -7,6 +7,7 @@ Persistência: SQLite (data/equipe.db) + pasta data/uploads.
 import base64
 import hashlib
 import html
+import json
 import unicodedata
 import os
 import secrets
@@ -290,6 +291,104 @@ def _salvar_membro(nome, pin, lider):
        (nome, hash_pin(pin), int(lider)))
 
 
+ICO_EDITAR = ":material/edit:"
+ICO_EXCLUIR = ":material/delete:"
+
+
+def sucesso(msg):
+    """Guarda o aviso para aparecer como notificação depois da atualização da tela (que fecha o diálogo)."""
+    st.session_state["_aviso"] = msg
+    st.rerun()
+
+
+def mostrar_aviso():
+    msg = st.session_state.pop("_aviso", None)
+    if msg:
+        st.toast(msg, icon=":material/check_circle:")
+
+
+def cabecalho(titulo, acao=None, icone=None, chave=None):
+    """Título da página à esquerda e, se houver, a ação principal à direita (sempre no mesmo lugar)."""
+    esq, dir_ = st.columns([4, 1.4], vertical_alignment="center")
+    esq.header(titulo)
+    if acao:
+        return dir_.button(acao, key=chave, type="primary", icon=icone, width="stretch")
+    return False
+
+
+def botoes_dialogo(rotulo="Salvar"):
+    """Rodapé padrão dos diálogos: Cancelar e a ação principal, à direita."""
+    _, c1, c2 = st.columns([2, 1, 1])
+    cancelar = c1.button("Cancelar", key="dlg_cancelar", width="stretch")
+    ok = c2.button(rotulo, key="dlg_ok", type="primary", width="stretch")
+    if cancelar:
+        st.rerun()
+    return ok
+
+
+@st.dialog("Confirmar")
+def confirmar_acao(texto, rotulo, sql, params, aviso, perigoso=True):
+    """Confirmação antes de uma ação sem volta (excluir, remover) ou de grande efeito."""
+    st.write(texto)
+    _, c1, c2 = st.columns([2, 1, 1])
+    if c1.button("Cancelar", key="dlg_cancelar", width="stretch"):
+        st.rerun()
+    if c2.button(rotulo, key="dlg_perigo" if perigoso else "dlg_ok", type="primary", width="stretch"):
+        ex(sql, params)
+        sucesso(aviso)
+
+
+def selo(texto, cor):
+    return (f'<span style="padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; white-space: nowrap; '
+            f'background-color: {cor};">{html.escape(texto)}</span>')
+
+
+def tabela(df, html_cols=(), largas=(), numericas=(), destaque=None):
+    """Tabela de leitura simples (cabeçalho, linhas, colunas numéricas à direita), sem cara de planilha."""
+    celula = "padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;"
+    cab = "".join(
+        f'<th style="text-align: {"right" if c in numericas else "left"}; padding: 8px 10px; '
+        f'border-bottom: 1px solid rgba(128,128,128,0.4); opacity: 0.7; font-weight: 500;">'
+        f"{html.escape(str(c))}</th>" for c in df.columns)
+    linhas = []
+    for _, r in df.iterrows():
+        fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;" if destaque and destaque(r) else ""
+        cels = "".join(
+            f'<td style="{celula}{"" if c in largas else " white-space: nowrap;"}'
+            f'{" text-align: right;" if c in numericas else ""}">'
+            f"{r[c] if c in html_cols else html.escape(str(r[c]))}</td>" for c in df.columns)
+        linhas.append(f'<tr style="{fundo}">{cels}</tr>')
+    st.markdown(
+        f'<table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">'
+        f"<thead><tr>{cab}</tr></thead><tbody>{''.join(linhas)}</tbody></table>",
+        unsafe_allow_html=True)
+
+
+def injetar_teclado_numerico():
+    """Campos de PIN abrem o teclado numérico no celular (o Streamlit não expõe o atributo inputmode)."""
+    st.iframe(
+        """
+        <script>
+        (function() {
+            const win = window.parent;
+            if (win.__tecladoNumericoAtivo) return;
+            win.__tecladoNumericoAtivo = true;
+            function ajustar() {
+                win.document.querySelectorAll('input[type="password"]').forEach(function (el) {
+                    el.setAttribute('inputmode', 'numeric');
+                    el.setAttribute('pattern', '[0-9]*');
+                });
+            }
+            new MutationObserver(ajustar).observe(win.document.body, { childList: true, subtree: true });
+            ajustar();
+        })();
+        </script>
+        """,
+        height=1,
+        width=1,
+    )
+
+
 def tela_inicial():
     with st.container(key="sidebar_cabecalho"):
         if ARQUIVO_LOGO.exists():
@@ -306,7 +405,7 @@ def tela_inicial():
             pin1 = st.text_input("Crie um PIN de 4 dígitos", type="password", max_chars=4)
             pin2 = st.text_input("Repita o PIN", type="password", max_chars=4)
             codigo = st.text_input("Código da equipe (os colegas vão digitar para entrar)").strip()
-            if st.form_submit_button("Criar equipe"):
+            if st.form_submit_button("Criar equipe", type="primary"):
                 if not nome or not codigo:
                     st.error("Informe seu nome e o código da equipe.")
                 elif not _pin_valido(pin1) or pin1 != pin2:
@@ -316,28 +415,31 @@ def tela_inicial():
                     _salvar_membro(nome, pin1, True)
                     _entrar_como(nome)
         return
-    aba_entrar, aba_novo = st.tabs(["Entrar", "Sou novo no grupo"])
-    with aba_entrar:
+    cadastro = st.session_state.get("tela_cadastro", False)
+    if not cadastro:
         with st.form("login"):
             nome = st.selectbox("Quem é você?", membros["nome"])
             pin = st.text_input("PIN", type="password", max_chars=4)
-            if st.form_submit_button("Entrar"):
+            if st.form_submit_button("Entrar", type="primary"):
                 m = membros[membros["nome"] == nome].iloc[0]
                 if hash_pin(pin) == m["pin_hash"]:
                     iniciar_sessao(m["id"])
                     st.rerun()
                 else:
                     st.error("PIN incorreto.")
-    with aba_novo:
-        if len(membros) >= MAX_MEMBROS:
-            st.info(f"A equipe já tem {MAX_MEMBROS} integrantes. Peça ao líder para liberar uma vaga.")
-            return
+        if st.button("Sou novo no grupo", type="tertiary"):
+            st.session_state["tela_cadastro"] = True
+            st.rerun()
+        return
+    if len(membros) >= MAX_MEMBROS:
+        st.info(f"A equipe já tem {MAX_MEMBROS} integrantes. Peça ao líder para liberar uma vaga.")
+    else:
         with st.form("cadastro"):
             nome = " ".join(st.text_input("Seu nome completo").split())
             codigo = st.text_input("Código da equipe").strip()
             pin1 = st.text_input("Crie um PIN de 4 dígitos", type="password", max_chars=4)
             pin2 = st.text_input("Repita o PIN", type="password", max_chars=4)
-            if st.form_submit_button("Entrar no grupo"):
+            if st.form_submit_button("Entrar no grupo", type="primary"):
                 esperado = (q("SELECT codigo FROM equipe WHERE id = 1")["codigo"].iloc[0] or "").lower()
                 if not nome:
                     st.error("Informe seu nome.")
@@ -346,14 +448,17 @@ def tela_inicial():
                 elif not _pin_valido(pin1) or pin1 != pin2:
                     st.error("Use um PIN de 4 dígitos e repita igual.")
                 elif nome.lower() in {n.lower() for n in membros["nome"]}:
-                    st.error("Já existe alguém com esse nome. Use a aba Entrar.")
+                    st.error("Já existe alguém com esse nome. Volte e use Entrar.")
                 else:
                     _salvar_membro(nome, pin1, False)
                     _entrar_como(nome)
+    if st.button("Já tenho cadastro", type="tertiary"):
+        st.session_state["tela_cadastro"] = False
+        st.rerun()
 
 
 def registros_do_membro(mid):
-    """Conta tudo que referencia o integrante (contribuições, diário, avaliações e tarefas)."""
+    """Conta tudo que referencia o integrante (contribuições, diário e tarefas)."""
     with db() as con:
         return con.execute(
             """SELECT (SELECT COUNT(*) FROM contribuicoes WHERE membro_id = :m)
@@ -366,18 +471,6 @@ def slug(nome):
     """'Minhas contribuições' -> 'minhas-contribuicoes', para usar no endereço da página."""
     base = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().lower()
     return "-".join(base.split())
-
-
-def pagina_inicial():
-    """Página pedida no endereço (?pagina=...), ou a primeira se não houver ou for inválida."""
-    por_slug = {slug(n): n for n in PAGINAS}
-    return por_slug.get(st.query_params.get("pagina", ""), next(iter(PAGINAS)))
-
-
-def ir_para(nome):
-    """Troca de página e grava no endereço, para a tela continuar a mesma ao atualizar (F5)."""
-    st.session_state["pagina"] = nome
-    st.query_params["pagina"] = slug(nome)
 
 
 def usuario():
@@ -440,29 +533,30 @@ def pg_painel(u):
     resto = ("última semana" if falta == 0 else
              f"falta {falta} semana" if falta == 1 else f"faltam {falta} semanas")
     st.progress(atual / total, text=f"Semana {atual} de {total} · {resto}")
-    membros = q("SELECT id, nome FROM membros WHERE ativo = 1")
     c = q("""SELECT m.nome, COUNT(c.id) AS registros, COALESCE(SUM(c.horas),0) AS horas,
                     MAX(c.data) AS ultimo
              FROM membros m LEFT JOIN contribuicoes c ON c.membro_id = m.id
              WHERE m.ativo = 1 GROUP BY m.id ORDER BY m.nome""")
     st.subheader("Contribuições por integrante")
-    tabela = c.assign(ultimo=c["ultimo"].map(br))
-    st.dataframe(tabela.rename(columns={"nome": "Integrante", "registros": "Registros",
-                                        "horas": "Horas", "ultimo": "Último registro"}),
-                 hide_index=True, width="stretch")
+    limite = (date.today() - pd.Timedelta(days=DIAS_ALERTA)).isoformat()
+    parado = c["ultimo"].isna() | (c["ultimo"] < limite)
+    tabela(pd.DataFrame({
+        "Integrante": c["nome"],
+        "Registros": c["registros"],
+        "Horas": c["horas"].map(lambda h: f"{h:g}"),
+        "Último registro": c["ultimo"].map(br),
+        "Situação": [selo(f"Sem registro há mais de {DIAS_ALERTA} dias", "rgba(198, 40, 40, 0.25)") if p
+                     else selo("Em dia", "rgba(46, 125, 50, 0.25)") for p in parado],
+    }), html_cols=("Situação",), numericas=("Registros", "Horas"))
     if not c.empty:
         grafico_horas(c)
-    limite = (date.today() - pd.Timedelta(days=DIAS_ALERTA)).isoformat()
-    parados = c[(c["ultimo"].isna()) | (c["ultimo"] < limite)]
-    for _, r in parados.iterrows():
-        st.warning(f"{r['nome']} está há mais de {DIAS_ALERTA} dias sem registrar contribuição.")
     t = q("SELECT status, COUNT(*) AS n FROM tarefas GROUP BY status")
     st.subheader("Tarefas")
     cols = st.columns(3)
     for col, s in zip(cols, STATUS):
         n = int(t.loc[t["status"] == s, "n"].sum())
         col.metric(s, n)
-    pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, s.prazo AS Prazo, t.titulo AS Tarefa,
+    pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, t.titulo AS Tarefa,
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t JOIN semanas s ON s.semana = t.semana
                 LEFT JOIN membros m ON m.id = t.responsavel_id
@@ -471,31 +565,12 @@ def pg_painel(u):
     if pend.empty:
         st.caption("Nenhuma pendência.")
     else:
-        atual = semana_atual()
-
         efetivos = prazos_efetivos()
-        pend["Prazo"] = pend["Semana"].map(lambda sem: br(efetivos.get(int(sem), ""))[:5])
+        pend.insert(2, "Prazo", pend["Semana"].map(lambda sem: br(efetivos.get(int(sem), ""))[:5]))
         pend["Início"] = pend["Início"].map(lambda d: br(d)[:5])
         pend["Responsável"] = pend["Responsável"].map(nome_curto)
-        mostrar = pend[["Semana", "Início", "Prazo", "Tarefa", "Responsável", "Status"]]
-        linhas = []
-        for _, r in mostrar.iterrows():
-            if r["Semana"] == atual:
-                fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;"
-            else:
-                fundo = ""
-            celulas = "".join(
-                f'<td style="padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;'
-                f'{"" if c == "Tarefa" else " white-space: nowrap;"}">'
-                f"{html.escape(str(r[c]))}</td>" for c in mostrar.columns)
-            linhas.append(f'<tr style="{fundo}">{celulas}</tr>')
-        cabecalho = "".join(
-            f'<th style="text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.4); '
-            f'opacity: 0.7; font-weight: 500;">{"Sem." if c == "Semana" else c}</th>' for c in mostrar.columns)
-        st.markdown(
-            f'<table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">'
-            f"<thead><tr>{cabecalho}</tr></thead><tbody>{''.join(linhas)}</tbody></table>",
-            unsafe_allow_html=True)
+        pend = pend.rename(columns={"Semana": "Sem."})
+        tabela(pend, largas=("Tarefa",), destaque=lambda r: r["Sem."] == atual)
         st.caption("Em verde: a semana em vigor.")
 
 
@@ -504,56 +579,111 @@ def pg_equipe(u):
     e = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
     with st.form("equipe"):
         nome = st.text_input("Nome da equipe", e["nome"] or "")
-        if st.form_submit_button("Salvar"):
+        if st.form_submit_button("Salvar", type="primary"):
             ex("UPDATE equipe SET nome=? WHERE id=1", (nome.strip(),))
-            st.success("Salvo.")
+            sucesso("Nome da equipe salvo.")
     st.subheader("Integrantes")
-    m = q("SELECT nome, CASE lider WHEN 1 THEN 'Líder' ELSE '' END AS papel FROM membros "
-          "WHERE ativo = 1 ORDER BY nome")
-    st.dataframe(m, hide_index=True, width="stretch")
+    m = q("SELECT id, nome, lider FROM membros WHERE ativo = 1 ORDER BY nome")
+    colunas = [6, 2.5, 0.8]
+    h1, h2, _ = st.columns(colunas)
+    h1.caption("Integrante")
+    h2.caption("Papel")
+    for _, r in m.iterrows():
+        c1, c2, c3 = st.columns(colunas, vertical_alignment="center")
+        c1.write(r["nome"])
+        c2.write("Líder" if r["lider"] else "Integrante")
+        if not u["lider"] or r["id"] == u["id"]:
+            continue
+        mid, nome_alvo = int(r["id"]), r["nome"]
+        with c3.popover(":material/more_horiz:", help="Ações", width="stretch"):
+            if st.button("Redefinir PIN", key=f"pin_{mid}", type="tertiary", width="stretch"):
+                dlg_redefinir_pin(mid, nome_alvo)
+            if st.button("Passar a liderança", key=f"lid_{mid}", type="tertiary", width="stretch"):
+                confirmar_acao(f"Passar a liderança da equipe para **{nome_alvo}**? "
+                               "Você deixa de ser líder.", "Passar liderança",
+                               "UPDATE membros SET lider = (id = ?) WHERE ativo = 1", (mid,),
+                               f"{nome_alvo} agora é o líder.", perigoso=False)
+            if st.button("Remover da equipe", key=f"rem_{mid}", type="tertiary", width="stretch"):
+                confirmar_acao(f"Remover **{nome_alvo}** da equipe? O acesso é desativado, "
+                               "mas os registros que a pessoa já fez continuam.", "Remover",
+                               "UPDATE membros SET ativo = 0 WHERE id = ?", (mid,),
+                               f"{nome_alvo} foi removido da equipe.")
+            if registros_do_membro(mid) == 0 and st.button(
+                    "Excluir definitivamente", key=f"del_{mid}", type="tertiary", width="stretch"):
+                confirmar_acao(f"Excluir **{nome_alvo}** definitivamente? Esta ação não pode ser desfeita.",
+                               "Excluir", "DELETE FROM membros WHERE id = ?", (mid,),
+                               f"{nome_alvo} foi excluído.")
     if u["lider"]:
-        with st.expander("Ferramentas do líder"):
-            atual = q("SELECT codigo FROM equipe WHERE id = 1")["codigo"].iloc[0] or ""
-            with st.form("codigo"):
-                novo_codigo = st.text_input("Código da equipe (passe aos colegas)", atual).strip()
-                if st.form_submit_button("Salvar código") and novo_codigo:
-                    ex("UPDATE equipe SET codigo = ? WHERE id = 1", (novo_codigo,))
-                    st.success("Código atualizado.")
-            outros = q("SELECT id, nome FROM membros WHERE ativo = 1 AND id != ? ORDER BY nome",
-                       (int(u["id"]),))
-            if not outros.empty:
-                st.divider()
-                st.markdown("**Gerenciar um integrante**")
-                alvo = st.selectbox("1. Escolha o integrante", outros["id"],
-                                    format_func=lambda i: outros[outros["id"] == i]["nome"].iloc[0])
-                nome_alvo = outros[outros["id"] == alvo]["nome"].iloc[0]
-                primeiro = nome_alvo.split()[0]
-                st.markdown(f"2. Ações para **{nome_alvo}**:")
-                novo_pin = st.text_input(f"Novo PIN para {primeiro} (4 dígitos)", max_chars=4,
-                                         type="password")
-                c1, c2, c3 = st.columns(3)
-                if c1.button(f"Redefinir PIN de {primeiro}"):
-                    if _pin_valido(novo_pin):
-                        ex("UPDATE membros SET pin_hash = ? WHERE id = ?", (hash_pin(novo_pin), int(alvo)))
-                        st.success(f"PIN de {nome_alvo} redefinido.")
-                    else:
-                        st.error("Informe um PIN de 4 dígitos.")
-                if c2.button(f"Passar a liderança para {primeiro}"):
-                    with db() as con:
-                        con.execute("UPDATE membros SET lider = (id = ?) WHERE ativo = 1", (int(alvo),))
-                    st.rerun()
-                if c3.button(f"Remover {primeiro} da equipe"):
-                    ex("UPDATE membros SET ativo = 0 WHERE id = ?", (int(alvo),))
-                    st.rerun()
-                st.caption("Remover desativa o acesso, mas mantém os registros que a pessoa já fez.")
-                with st.expander(f"Excluir {primeiro} definitivamente (só quem não tem nenhum registro)"):
-                    usados = registros_do_membro(int(alvo))
-                    if usados:
-                        st.info(f"{nome_alvo} tem {usados} registro(s) no sistema. "
-                                "Use \"Remover da equipe\" para preservar o histórico.")
-                    elif st.button(f"Excluir {primeiro} definitivamente", key="excluir_def"):
-                        ex("DELETE FROM membros WHERE id = ?", (int(alvo),))
-                        st.rerun()
+        st.subheader("Código da equipe")
+        atual = q("SELECT codigo FROM equipe WHERE id = 1")["codigo"].iloc[0] or ""
+        with st.form("codigo"):
+            novo_codigo = st.text_input("Código que os colegas digitam para entrar", atual).strip()
+            if st.form_submit_button("Salvar código", type="primary") and novo_codigo:
+                ex("UPDATE equipe SET codigo = ? WHERE id = 1", (novo_codigo,))
+                sucesso("Código atualizado.")
+
+
+@st.dialog("Redefinir PIN")
+def dlg_redefinir_pin(mid, nome):
+    st.write(f"Novo PIN para **{nome}**.")
+    pin = st.text_input("Novo PIN (4 dígitos)", type="password", max_chars=4)
+    erro = st.container()
+    if botoes_dialogo("Redefinir"):
+        if not _pin_valido(pin):
+            erro.error("Informe um PIN de 4 dígitos.")
+        else:
+            ex("UPDATE membros SET pin_hash = ? WHERE id = ?", (hash_pin(pin), int(mid)))
+            sucesso(f"PIN de {nome} redefinido.")
+
+
+@st.dialog("Editar tarefa")
+def dlg_tarefa(tid, titulo):
+    novo = st.text_input("Texto da tarefa", titulo)
+    erro = st.container()
+    if botoes_dialogo():
+        if not novo.strip():
+            erro.error("Escreva o texto da tarefa.")
+        else:
+            ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo.strip(), int(tid)))
+            sucesso("Tarefa salva.")
+
+
+@st.dialog("Nova tarefa")
+def dlg_nova_tarefa(sem, prazo_semana, nomes):
+    novo = st.text_input("Texto da tarefa")
+    resp = st.selectbox("Responsável", [None] + list(nomes),
+                        format_func=lambda i: nome_curto(nomes.get(i, "—")))
+    erro = st.container()
+    if botoes_dialogo("Adicionar"):
+        if not novo.strip():
+            erro.error("Escreva o texto da tarefa.")
+        else:
+            ex("INSERT INTO tarefas(semana, prazo, titulo, responsavel_id) VALUES (?,?,?,?)",
+               (int(sem), prazo_semana, novo.strip(), int(resp) if resp else None))
+            sucesso("Tarefa adicionada.")
+
+
+@st.dialog("Alterar datas")
+def dlg_datas(sem):
+    datas, prazos, efetivos = datas_semanas(), prazos_semanas(), prazos_efetivos()
+    st.caption(f"Semana {sem}")
+    nova = st.date_input("Começa em", date.fromisoformat(datas[sem]), format="DD/MM/YYYY")
+    novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(efetivos[sem]), format="DD/MM/YYYY")
+    mover = st.checkbox("Mover as semanas seguintes junto", value=True)
+    if botoes_dialogo():
+        dias = (nova - date.fromisoformat(datas[sem])).days
+        alvo = [n for n in datas if n >= sem] if mover else [sem]
+        with db() as con:
+            for n in alvo:
+                novo_inicio = (date.fromisoformat(datas[n]) + timedelta(days=dias)).isoformat()
+                novo_pz = (date.fromisoformat(prazos[n]) + timedelta(days=dias)).isoformat() if n in prazos else None
+                con.execute("UPDATE semanas SET inicio = ?, prazo = ? WHERE semana = ?",
+                            (novo_inicio, novo_pz, n))
+            if novo_prazo.isoformat() != efetivos[sem]:
+                con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?", (novo_prazo.isoformat(), sem))
+            con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
+                        "WHERE semanas.semana = tarefas.semana)")
+        sucesso("Datas salvas.")
 
 
 def pg_cronograma(u):
@@ -562,41 +692,26 @@ def pg_cronograma(u):
     nomes = dict(zip(membros["id"], membros["nome"]))
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
     datas = datas_semanas()
-    prazos = prazos_semanas()
     efetivos = prazos_efetivos()
+    colunas = [6, 2.2, 2.2, 0.8, 0.8]
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
-            col_data, _, _, col_botao = st.columns([4, 2, 2, 2])
-            col_data.caption(f"Começa em {br(prazo_semana)}"
-                             + f" · Prazo {br(efetivos[sem])}")
-            with col_botao.container(key=f"altdata_{sem}"):
-                with st.popover("Alterar data", width="content"):
-                    with st.form(f"datas{sem}"):
-                        nova = st.date_input("Começa em", date.fromisoformat(prazo_semana), format="DD/MM/YYYY")
-                        novo_prazo = st.date_input("Prazo de entrega", date.fromisoformat(efetivos[sem]),
-                                                   format="DD/MM/YYYY")
-                        mover = st.checkbox("Mover as semanas seguintes junto", value=True)
-                        salvar = st.form_submit_button("Salvar")
-                    if salvar:
-                        dias = (nova - date.fromisoformat(prazo_semana)).days
-                        alvo = [n for n in datas if n >= sem] if mover else [sem]
-                        with db() as con:
-                            for n in alvo:
-                                novo_inicio = (date.fromisoformat(datas[n]) + timedelta(days=dias)).isoformat()
-                                novo_pz = (date.fromisoformat(prazos[n]) + timedelta(days=dias)).isoformat() if n in prazos else None
-                                con.execute("UPDATE semanas SET inicio = ?, prazo = ? WHERE semana = ?",
-                                            (novo_inicio, novo_pz, n))
-                            if novo_prazo and novo_prazo.isoformat() != efetivos[sem]:
-                                con.execute("UPDATE semanas SET prazo = ? WHERE semana = ?",
-                                            (novo_prazo.isoformat(), sem))
-                            con.execute("UPDATE tarefas SET prazo = (SELECT inicio FROM semanas "
-                                        "WHERE semanas.semana = tarefas.semana)")
-                        st.rerun()
-            if t[t["semana"] == sem].empty:
+            col_data, _, _, col_acao, _ = st.columns(colunas, vertical_alignment="center")
+            col_data.caption(f"Começa em {br(prazo_semana)} · Prazo {br(efetivos[sem])}")
+            if col_acao.button(":material/edit_calendar:", key=f"datas_{sem}", type="tertiary",
+                               help="Alterar datas da semana", width="stretch"):
+                dlg_datas(sem)
+            tarefas = t[t["semana"] == sem]
+            if tarefas.empty:
                 st.caption("Nenhuma tarefa nesta semana.")
-            for _, r in t[t["semana"] == sem].iterrows():
-                c1, c2, c3, c4 = st.columns([4, 2, 2, 2])
+            else:
+                h1, h2, h3, _, _ = st.columns(colunas)
+                h1.caption("Tarefa")
+                h2.caption("Responsável")
+                h3.caption("Status")
+            for _, r in tarefas.iterrows():
+                c1, c2, c3, c4, c5 = st.columns(colunas, vertical_alignment="center")
                 c1.write(r["titulo"])
                 ids = [None] + list(nomes)
                 atual = r["responsavel_id"]
@@ -606,53 +721,73 @@ def pg_cronograma(u):
                                     label_visibility="collapsed")
                 stt = c3.selectbox("Status", STATUS, index=STATUS.index(r["status"]),
                                    key=f"s{r['id']}", label_visibility="collapsed")
-                with c4.container(key=f"edita_{r['id']}"):
-                    with st.popover("Editar", width="content"):
-                        novo_txt = st.text_input("Texto da tarefa", r["titulo"], key=f"edt{r['id']}")
-                        b1, b2 = st.columns(2)
-                        if b1.button("Salvar", key=f"salva{r['id']}", width="stretch") and novo_txt.strip():
-                            ex("UPDATE tarefas SET titulo = ? WHERE id = ?", (novo_txt.strip(), int(r["id"])))
-                            st.rerun()
-                        if b2.button("Excluir", key=f"exclui{r['id']}", width="stretch"):
-                            ex("DELETE FROM tarefas WHERE id = ?", (int(r["id"]),))
-                            st.rerun()
+                if c4.button(ICO_EDITAR, key=f"edita_{r['id']}", type="tertiary", help="Editar",
+                             width="stretch"):
+                    dlg_tarefa(int(r["id"]), r["titulo"])
+                if c5.button(ICO_EXCLUIR, key=f"exclui_{r['id']}", type="tertiary", help="Excluir",
+                             width="stretch"):
+                    confirmar_acao(f"Excluir a tarefa **{r['titulo']}**? Esta ação não pode ser desfeita.",
+                                   "Excluir", "DELETE FROM tarefas WHERE id = ?", (int(r["id"]),),
+                                   "Tarefa excluída.")
                 if resp != (int(atual) if pd.notna(atual) else None) or stt != r["status"]:
                     ex("UPDATE tarefas SET responsavel_id=?, status=? WHERE id=?",
                        (resp, stt, int(r["id"])))
                     st.rerun()
-            with st.form(f"nt{sem}", clear_on_submit=True):
-                novo = st.text_input("Nova tarefa nesta semana")
-                novo_resp = st.selectbox("Responsável", [None] + list(nomes), key=f"nr{sem}",
-                                         format_func=lambda i: nome_curto(nomes.get(i, "—")))
-                if st.form_submit_button("Adicionar") and novo.strip():
-                    ex("INSERT INTO tarefas(semana, prazo, titulo, responsavel_id) VALUES (?,?,?,?)",
-                       (int(sem), prazo_semana, novo.strip(),
-                        int(novo_resp) if novo_resp else None))
-                    st.rerun()
+            if st.button("Adicionar tarefa", key=f"nova_{sem}", icon=":material/add:"):
+                dlg_nova_tarefa(sem, prazo_semana, nomes)
+
+
+@st.dialog("Novo registro", width="large")
+def dlg_nova_contribuicao(u):
+    c1, c2, c3 = st.columns(3)
+    d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
+    sem = c2.number_input("Semana", 1, 10, semana_atual())
+    horas = c3.number_input("Horas", 0.0, 24.0, 1.0, 0.5)
+    tipo = st.selectbox("Tipo de atividade", TIPOS_CONTRIB)
+    desc = st.text_area("O que você fez?")
+    link = st.text_input("Link da evidência (Drive, documento, foto...)")
+    up = st.file_uploader("Ou anexe um arquivo")
+    erro = st.container()
+    if botoes_dialogo("Registrar"):
+        if not desc.strip():
+            erro.error("Descreva a contribuição.")
+        else:
+            ex("""INSERT INTO contribuicoes(membro_id, data, semana, tipo, descricao, horas,
+                  link, arquivo, criado_em) VALUES (?,?,?,?,?,?,?,?,?)""",
+               (int(u["id"]), d.isoformat(), int(sem), tipo, desc.strip(), horas,
+                link.strip() or None, salvar_arquivo(up), datetime.now().isoformat()))
+            sucesso("Contribuição registrada.")
+
+
+@st.dialog("Editar registro", width="large")
+def dlg_edita_contribuicao(r, uid):
+    c1, c2, c3 = st.columns(3)
+    nd = c1.date_input("Data", date.fromisoformat(r["data"]), format="DD/MM/YYYY")
+    ns = c2.number_input("Semana", 1, 10, int(r["semana"]))
+    nh = c3.number_input("Horas", 0.0, 24.0, float(r["horas"]), 0.5)
+    nt = st.selectbox("Tipo de atividade", TIPOS_CONTRIB,
+                      index=TIPOS_CONTRIB.index(r["tipo"]) if r["tipo"] in TIPOS_CONTRIB else 0)
+    ndesc = st.text_area("O que você fez?", r["descricao"])
+    nlink = st.text_input("Link da evidência", _txt(r["link"]))
+    erro = st.container()
+    if botoes_dialogo():
+        if not ndesc.strip():
+            erro.error("Descreva a contribuição.")
+        else:
+            ex("""UPDATE contribuicoes SET data=?, semana=?, tipo=?, descricao=?, horas=?, link=?
+                  WHERE id=? AND membro_id=?""",
+               (nd.isoformat(), int(ns), nt, ndesc.strip(), nh, nlink.strip() or None,
+                int(r["id"]), int(uid)))
+            sucesso("Registro salvo.")
 
 
 def pg_contribuicoes(u):
-    st.header("Minhas contribuições")
+    if cabecalho("Minhas contribuições", "Novo registro", ":material/add:", "novo_contrib"):
+        dlg_nova_contribuicao(u)
     st.caption("Registre o que você fez, com evidência. É isso que comprova sua participação.")
-    with st.form("contrib", clear_on_submit=True):
-        c1, c2, c3 = st.columns(3)
-        d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
-        sem = c2.number_input("Semana", 1, 10, semana_atual())
-        horas = c3.number_input("Horas", 0.0, 24.0, 1.0, 0.5)
-        tipo = st.selectbox("Tipo de atividade", TIPOS_CONTRIB)
-        desc = st.text_area("O que você fez?")
-        link = st.text_input("Link da evidência (Drive, documento, foto...)")
-        up = st.file_uploader("Ou anexe um arquivo")
-        if st.form_submit_button("Registrar"):
-            if not desc.strip():
-                st.error("Descreva a contribuição.")
-            else:
-                ex("""INSERT INTO contribuicoes(membro_id, data, semana, tipo, descricao, horas,
-                      link, arquivo, criado_em) VALUES (?,?,?,?,?,?,?,?,?)""",
-                   (int(u["id"]), d.isoformat(), int(sem), tipo, desc.strip(), horas,
-                    link.strip() or None, salvar_arquivo(up), datetime.now().isoformat()))
-                st.success("Registrado.")
-    ver_todos = st.toggle("Ver de toda a equipe", value=False)
+    visao = st.segmented_control("Exibir", ["Minhas", "Da equipe"], default="Minhas",
+                                 key="visao_contrib", label_visibility="collapsed")
+    ver_todos = visao == "Da equipe"
     sql = """SELECT c.id, m.nome, c.data, c.semana, c.tipo, c.descricao, c.horas, c.link, c.arquivo
              FROM contribuicoes c JOIN membros m ON m.id = c.membro_id"""
     df = q(sql + ("" if ver_todos else " WHERE c.membro_id = ?") + " ORDER BY c.data DESC, c.id DESC",
@@ -661,58 +796,75 @@ def pg_contribuicoes(u):
         st.info("Nenhuma contribuição registrada ainda.")
     for _, r in df.iterrows():
         with st.container(border=True):
+            topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
             quem = f" · {r['nome']}" if ver_todos else ""
-            st.markdown(f"**{br(r['data'])}** · Semana {r['semana']} · {r['tipo']} · "
-                        f"{r['horas']:g} h{quem}")
+            topo.markdown(f"**{br(r['data'])}** · Semana {r['semana']} · {r['tipo']} · "
+                          f"{r['horas']:g} h{quem}")
+            if r["nome"] == u["nome"]:
+                if b1.button(ICO_EDITAR, key=f"ec_{r['id']}", type="tertiary", help="Editar",
+                             width="stretch"):
+                    dlg_edita_contribuicao(r.to_dict(), int(u["id"]))
+                if b2.button(ICO_EXCLUIR, key=f"xc_{r['id']}", type="tertiary", help="Excluir",
+                             width="stretch"):
+                    confirmar_acao("Excluir este registro? Esta ação não pode ser desfeita.", "Excluir",
+                                   "DELETE FROM contribuicoes WHERE id = ? AND membro_id = ?",
+                                   (int(r["id"]), int(u["id"])), "Registro excluído.")
             st.write(r["descricao"])
             mostrar_evidencia(r["link"], r["arquivo"], f"c{r['id']}")
-    meus = df[df["nome"] == u["nome"]]
-    if not meus.empty:
-        with st.expander("Editar ou excluir um registro meu"):
-            rid = st.selectbox("Registro", meus["id"], key="ed_contrib",
-                               format_func=lambda i: f"{br(meus[meus['id'] == i]['data'].iloc[0])} · "
-                               f"{meus[meus['id'] == i]['descricao'].iloc[0][:50]}")
-            r = meus[meus["id"] == rid].iloc[0]
-            with st.form(f"edc_{rid}"):
-                c1, c2, c3 = st.columns(3)
-                nd = c1.date_input("Data", date.fromisoformat(r["data"]), format="DD/MM/YYYY")
-                ns = c2.number_input("Semana", 1, 10, int(r["semana"]))
-                nh = c3.number_input("Horas", 0.0, 24.0, float(r["horas"]), 0.5)
-                nt = st.selectbox("Tipo de atividade", TIPOS_CONTRIB,
-                                  index=TIPOS_CONTRIB.index(r["tipo"]) if r["tipo"] in TIPOS_CONTRIB else 0)
-                ndesc = st.text_area("O que você fez?", r["descricao"])
-                nlink = st.text_input("Link da evidência", _txt(r["link"]))
-                if st.form_submit_button("Salvar alterações") and ndesc.strip():
-                    ex("""UPDATE contribuicoes SET data=?, semana=?, tipo=?, descricao=?, horas=?, link=?
-                          WHERE id=? AND membro_id=?""",
-                       (nd.isoformat(), int(ns), nt, ndesc.strip(), nh, nlink.strip() or None,
-                        int(rid), int(u["id"])))
-                    st.rerun()
-            if st.button("Excluir este registro", key=f"exc_{rid}"):
-                ex("DELETE FROM contribuicoes WHERE id = ? AND membro_id = ?", (int(rid), int(u["id"])))
-                st.rerun()
 
 
-def pg_diario(u):
-    st.header("Diário de campo da comunidade")
-    nomes = list(q("SELECT nome FROM membros WHERE ativo = 1 ORDER BY nome")["nome"])
-    with st.form("diario", clear_on_submit=True):
-        c1, c2, c3 = st.columns(3)
-        d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
-        tipo = c2.selectbox("Tipo", TIPOS_CAMPO)
-        local = c3.text_input("Local / canal")
-        part = st.multiselect("Integrantes presentes", nomes)
-        ouvidas = st.text_input("Pessoas ouvidas (nome ou perfil)")
-        relato = st.text_area("O que aconteceu / o que foi dito", height=150)
-        aprend = st.text_area("Aprendizados, dores e necessidades percebidas")
-        link = st.text_input("Link de evidência (foto, áudio, documento)")
-        up = st.file_uploader("Ou anexe um arquivo", key="up_d")
-        if st.form_submit_button("Registrar") and relato.strip():
+@st.dialog("Novo registro", width="large")
+def dlg_novo_diario(u, nomes):
+    c1, c2, c3 = st.columns(3)
+    d = c1.date_input("Data", date.today(), format="DD/MM/YYYY")
+    tipo = c2.selectbox("Tipo", TIPOS_CAMPO)
+    local = c3.text_input("Local / canal")
+    part = st.multiselect("Integrantes presentes", nomes)
+    ouvidas = st.text_input("Pessoas ouvidas (nome ou perfil)")
+    relato = st.text_area("O que aconteceu / o que foi dito", height=150)
+    aprend = st.text_area("Aprendizados, dores e necessidades percebidas")
+    link = st.text_input("Link de evidência (foto, áudio, documento)")
+    up = st.file_uploader("Ou anexe um arquivo", key="up_d")
+    erro = st.container()
+    if botoes_dialogo("Registrar"):
+        if not relato.strip():
+            erro.error("Descreva o que aconteceu.")
+        else:
             ex("""INSERT INTO diario(data, tipo, local, participantes, pessoas_ouvidas, relato,
                   aprendizados, link, arquivo, autor_id) VALUES (?,?,?,?,?,?,?,?,?,?)""",
                (d.isoformat(), tipo, local, ", ".join(part), ouvidas, relato.strip(), aprend,
                 link.strip() or None, salvar_arquivo(up), int(u["id"])))
-            st.success("Registrado.")
+            sucesso("Registro adicionado ao diário.")
+
+
+@st.dialog("Editar registro", width="large")
+def dlg_edita_diario(r, nomes):
+    c1, c2, c3 = st.columns(3)
+    nd = c1.date_input("Data", date.fromisoformat(r["data"]), format="DD/MM/YYYY")
+    nt = c2.selectbox("Tipo", TIPOS_CAMPO, index=TIPOS_CAMPO.index(r["tipo"]) if r["tipo"] in TIPOS_CAMPO else 0)
+    nl = c3.text_input("Local / canal", _txt(r["local"]))
+    atuais = [p.strip() for p in _txt(r["participantes"]).split(",") if p.strip()]
+    npart = st.multiselect("Integrantes presentes", list(dict.fromkeys(list(nomes) + atuais)), default=atuais)
+    nouv = st.text_input("Pessoas ouvidas", _txt(r["pessoas_ouvidas"]))
+    nrel = st.text_area("O que aconteceu / o que foi dito", _txt(r["relato"]), height=150)
+    napr = st.text_area("Aprendizados, dores e necessidades percebidas", _txt(r["aprendizados"]))
+    nlink = st.text_input("Link de evidência", _txt(r["link"]))
+    erro = st.container()
+    if botoes_dialogo():
+        if not nrel.strip():
+            erro.error("Descreva o que aconteceu.")
+        else:
+            ex("""UPDATE diario SET data=?, tipo=?, local=?, participantes=?, pessoas_ouvidas=?,
+                  relato=?, aprendizados=?, link=? WHERE id=?""",
+               (nd.isoformat(), nt, nl, ", ".join(npart), nouv, nrel.strip(), napr,
+                nlink.strip() or None, int(r["id"])))
+            sucesso("Registro salvo.")
+
+
+def pg_diario(u):
+    nomes = list(q("SELECT nome FROM membros WHERE ativo = 1 ORDER BY nome")["nome"])
+    if cabecalho("Diário de campo da comunidade", "Novo registro", ":material/add:", "novo_diario"):
+        dlg_novo_diario(u, nomes)
     df = q("""SELECT d.id, d.data, d.tipo, d.local, d.participantes, d.pessoas_ouvidas, d.relato,
                      d.aprendizados, d.link, d.arquivo, m.nome AS autor
               FROM diario d LEFT JOIN membros m ON m.id = d.autor_id ORDER BY d.data DESC, d.id DESC""")
@@ -720,8 +872,14 @@ def pg_diario(u):
         st.info("Nenhum registro no diário ainda.")
     for _, r in df.iterrows():
         with st.container(border=True):
+            topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
             local = f" · {r['local']}" if _txt(r["local"]) else ""
-            st.markdown(f"**{br(r['data'])}** · {r['tipo']}{local}")
+            topo.markdown(f"**{br(r['data'])}** · {r['tipo']}{local}")
+            if b1.button(ICO_EDITAR, key=f"ed_{r['id']}", type="tertiary", help="Editar", width="stretch"):
+                dlg_edita_diario(r.to_dict(), nomes)
+            if b2.button(ICO_EXCLUIR, key=f"xd_{r['id']}", type="tertiary", help="Excluir", width="stretch"):
+                confirmar_acao("Excluir este registro? Esta ação não pode ser desfeita.", "Excluir",
+                               "DELETE FROM diario WHERE id = ?", (int(r["id"]),), "Registro excluído.")
             if _txt(r["participantes"]):
                 st.markdown(f"**Presentes:** {r['participantes']}")
             if _txt(r["pessoas_ouvidas"]):
@@ -732,31 +890,6 @@ def pg_diario(u):
             mostrar_evidencia(r["link"], r["arquivo"], f"d{r['id']}")
             if _txt(r["autor"]):
                 st.caption(f"Registrado por {r['autor']}")
-    editaveis = df
-    if not editaveis.empty:
-        with st.expander("Editar ou excluir um registro"):
-            did = st.selectbox("Registro", editaveis["id"], key="ed_diario",
-                               format_func=lambda i: f"{br(editaveis[editaveis['id'] == i]['data'].iloc[0])} · "
-                               f"{editaveis[editaveis['id'] == i]['tipo'].iloc[0]}")
-            r = editaveis[editaveis["id"] == did].iloc[0]
-            with st.form(f"edd_{did}"):
-                c1, c2, c3 = st.columns(3)
-                nd = c1.date_input("Data", date.fromisoformat(r["data"]), format="DD/MM/YYYY")
-                nt = c2.selectbox("Tipo", TIPOS_CAMPO, index=TIPOS_CAMPO.index(r["tipo"]) if r["tipo"] in TIPOS_CAMPO else 0)
-                nl = c3.text_input("Local / canal", _txt(r["local"]))
-                npart = st.text_input("Integrantes presentes", _txt(r["participantes"]))
-                nouv = st.text_input("Pessoas ouvidas", _txt(r["pessoas_ouvidas"]))
-                nrel = st.text_area("O que aconteceu / o que foi dito", _txt(r["relato"]), height=150)
-                napr = st.text_area("Aprendizados, dores e necessidades percebidas", _txt(r["aprendizados"]))
-                nlink = st.text_input("Link de evidência", _txt(r["link"]))
-                if st.form_submit_button("Salvar alterações") and nrel.strip():
-                    ex("""UPDATE diario SET data=?, tipo=?, local=?, participantes=?, pessoas_ouvidas=?,
-                          relato=?, aprendizados=?, link=? WHERE id=?""",
-                       (nd.isoformat(), nt, nl, npart, nouv, nrel.strip(), napr, nlink.strip() or None, int(did)))
-                    st.rerun()
-            if st.button("Excluir este registro", key=f"excd_{did}"):
-                ex("DELETE FROM diario WHERE id = ?", (int(did),))
-                st.rerun()
 
 
 def _janela_semana(semana):
@@ -844,12 +977,57 @@ def _texto_entrega(semana, equipe, integrantes, lider, diario_ids):
     return assunto, "\n".join(corpo), faltam
 
 
+def caixa_copiar(rotulo, texto, linhas):
+    """Quadro de texto somente leitura com título e botão Copiar na mesma linha, como nos sistemas em geral."""
+    st.iframe(
+        f"""
+        <!-- caixa-visivel -->
+        <style>
+        body {{ margin: 0; font-family: inherit; }}
+        .topo {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }}
+        .rotulo {{ font-weight: 600; font-size: 14px; }}
+        button {{ font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
+                  background: transparent; color: inherit; border: 1px solid rgba(128,128,128,0.5); }}
+        button:hover {{ border-color: #2e7d32; color: #2e7d32; }}
+        pre {{ margin: 0; padding: 10px 12px; border-radius: 8px; font: inherit; font-size: 14px;
+               white-space: pre-wrap; word-break: break-word; box-sizing: border-box;
+               background: rgba(128,128,128,0.12); border: 1px solid rgba(128,128,128,0.3); }}
+        </style>
+        <div class="topo"><span class="rotulo"></span><button id="copiar">Copiar</button></div>
+        <pre id="texto"></pre>
+        <script>
+        (function() {{
+            const estilo = window.parent.getComputedStyle(window.parent.document.body);
+            document.body.style.color = estilo.color;
+            document.body.style.fontFamily = estilo.fontFamily;
+            document.querySelector('.rotulo').textContent = {json.dumps(rotulo)};
+            document.getElementById('texto').textContent = {json.dumps(texto)};
+            document.getElementById('copiar').addEventListener('click', function () {{
+                const botao = this;
+                const area = document.createElement('textarea');
+                area.value = {json.dumps(texto)};
+                document.body.appendChild(area);
+                area.select();
+                document.execCommand('copy');
+                area.remove();
+                botao.textContent = 'Copiado';
+                setTimeout(function () {{ botao.textContent = 'Copiar'; }}, 1500);
+            }});
+        }})();
+        </script>
+        """,
+        height=60 + 21 * linhas,
+    )
+
+
 def pg_entrega(u):
-    st.header("Entrega da semana")
+    topo = st.container()
     st.caption("Monta o texto da postagem do fórum do AVA com o que já está registrado. "
                "É só copiar e colar.")
-    semana = st.selectbox("Semana", [s for s, _, _ in CRONOGRAMA], index=semana_atual() - 1,
-                          format_func=lambda s: f"Semana {s} - {next(d for n, _, d in CRONOGRAMA if n == s)}")
+    semana = st.segmented_control("Semana", [s for s, _, _ in CRONOGRAMA], default=semana_atual(),
+                                  key="semana_entrega", label_visibility="collapsed",
+                                  format_func=lambda s: f"S{s}") or semana_atual()
+    st.markdown(f"**Semana {semana}** · {next(d for n, _, d in CRONOGRAMA if n == semana)}")
     equipe = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
     membros = q("SELECT nome, lider FROM membros WHERE ativo = 1 ORDER BY nome")
     integrantes = list(membros["nome"])
@@ -879,10 +1057,10 @@ def pg_entrega(u):
             comunidade = st.text_input("Comunidade escolhida", _txt(equipe["comunidade"]))
             justificativa = st.text_area("Justificativa da escolha", _txt(equipe["justificativa"]))
             contato = st.text_area("Como a equipe fará contato com a comunidade", _txt(equipe["contato"]))
-            if st.form_submit_button("Salvar"):
+            if st.form_submit_button("Salvar", type="primary"):
                 ex("""UPDATE equipe SET contrato=?, comunidade=?, justificativa=?, contato=? WHERE id=1""",
                    (contrato.strip(), comunidade.strip(), justificativa.strip(), contato.strip()))
-                st.rerun()
+                sucesso("Dados da semana 1 salvos.")
         equipe = q("SELECT * FROM equipe WHERE id = 1").iloc[0]
 
     assunto, mensagem, faltam = _texto_entrega(semana, equipe, integrantes, lider, escolhidos)
@@ -893,20 +1071,24 @@ def pg_entrega(u):
     editado = chave_a in st.session_state or chave_m in st.session_state
     editando = st.session_state.get(chave_ed, mensagem == "")
 
-    barra_1, barra_2, _ = st.columns([1, 1, 4])
-    if editando:
-        if barra_1.button("Concluir", key=f"conclui_{semana}", type="primary", width="stretch"):
+    with topo:
+        esq, restaurar, principal = st.columns([4, 1.6, 1.4], vertical_alignment="center")
+        esq.header("Entrega da semana")
+        if editado and restaurar.button("Restaurar", key=f"orig_{semana}", type="tertiary",
+                                        icon=":material/undo:", width="stretch"):
+            for chave in (chave_a, chave_m, f"ti_{semana}", f"ta_{semana}"):
+                st.session_state.pop(chave, None)
             st.session_state[chave_ed] = False
             st.rerun()
-    else:
-        if barra_1.button("Editar", key=f"edita_{semana}", type="primary", width="stretch"):
+        if editando:
+            if principal.button("Concluir", key=f"conclui_{semana}", type="primary",
+                                icon=":material/check:", width="stretch"):
+                st.session_state[chave_ed] = False
+                st.rerun()
+        elif principal.button("Editar", key=f"edita_{semana}", type="primary",
+                              icon=":material/edit:", width="stretch"):
             st.session_state[chave_ed] = True
             st.rerun()
-    if editado and barra_2.button("Restaurar", key=f"orig_{semana}", width="stretch"):
-        for chave in (chave_a, chave_m, f"ti_{semana}", f"ta_{semana}"):
-            st.session_state.pop(chave, None)
-        st.session_state[chave_ed] = False
-        st.rerun()
 
     if editando:
         st.text_input("Assunto", st.session_state.get(chave_a, assunto), key=f"ti_{semana}",
@@ -914,10 +1096,12 @@ def pg_entrega(u):
         st.text_area("Mensagem", st.session_state.get(chave_m, mensagem), height=460, key=f"ta_{semana}",
                      on_change=lambda: st.session_state.update({chave_m: st.session_state[f"ta_{semana}"]}))
     else:
-        st.markdown("**Assunto** (use o botão de copiar no canto do quadro)")
-        st.code(st.session_state.get(chave_a, assunto), language=None)
-        st.markdown("**Mensagem**")
-        st.code(st.session_state.get(chave_m, mensagem), language=None, wrap_lines=True)
+        texto_a = st.session_state.get(chave_a, assunto)
+        texto_m = st.session_state.get(chave_m, mensagem)
+        caixa_copiar("Assunto", texto_a, 2)
+        caixa_copiar("Mensagem", texto_m, min(40, texto_m.count(chr(10)) + 1 + len(texto_m) // 90))
+    if editado:
+        st.caption("Texto editado à mão.")
     st.caption("Cole no fórum do AVA, em Adicionar tópico de discussão. Só um integrante posta em nome da equipe.")
 
 
@@ -943,13 +1127,13 @@ def pg_exportar(u):
 
 
 PAGINAS = {
-    "Painel": pg_painel,
-    "Equipe": pg_equipe,
-    "Cronograma": pg_cronograma,
-    "Minhas contribuições": pg_contribuicoes,
-    "Diário de campo": pg_diario,
-    "Entrega da semana": pg_entrega,
-    "Relatório em PDF": pg_exportar,
+    "Painel": (pg_painel, ":material/dashboard:"),
+    "Equipe": (pg_equipe, ":material/groups:"),
+    "Cronograma": (pg_cronograma, ":material/calendar_month:"),
+    "Minhas contribuições": (pg_contribuicoes, ":material/task_alt:"),
+    "Diário de campo": (pg_diario, ":material/menu_book:"),
+    "Entrega da semana": (pg_entrega, ":material/send:"),
+    "Relatório em PDF": (pg_exportar, ":material/picture_as_pdf:"),
 }
 
 
@@ -988,9 +1172,8 @@ def injetar_manifest_pwa():
 
 def injetar_clique_logo_inicio():
     """
-    Faz a logo também levar ao Painel ao clicar, como o título. st.image() não aceita on_click,
-    então o script escuta cliques no cabeçalho do menu e, se não foi no botão do título, simula um
-    clique nele, reaproveitando a navegação existente.
+    Faz a logo do topo do menu levar ao Painel ao clicar. O link do st.logo abre outra aba ou
+    recarrega a página, então o script clica no primeiro item do menu, reaproveitando a navegação.
     """
     st.iframe(
         """
@@ -1000,11 +1183,10 @@ def injetar_clique_logo_inicio():
             if (win.__cliqueLogoInicioAtivo) return;
             win.__cliqueLogoInicioAtivo = true;
             win.document.addEventListener('click', function (e) {
-                const cab = e.target.closest && e.target.closest('div[class*="st-key-sidebar_cabecalho"]');
-                if (!cab) return;
-                const botao = cab.querySelector('div[class*="st-key-nav_titulo_inicio"] button');
-                if (!botao || e.target.closest('button') === botao) return;
-                botao.click();
+                const logo = e.target.closest && e.target.closest('[data-testid="stSidebarHeader"] img, [data-testid="stLogo"]');
+                if (!logo) return;
+                const primeiro = win.document.querySelector('[data-testid="stSidebarNav"] a');
+                if (primeiro) primeiro.click();
             }, { capture: true });
         })();
         </script>
@@ -1041,7 +1223,6 @@ def injetar_aviso_saida():
 
 
 def aplicar_estilo():
-    """Abas com cara de aba: borda, cantos arredondados e a ativa em destaque."""
     st.markdown("""
     <style>
     .stMainBlockContainer {
@@ -1067,23 +1248,9 @@ def aplicar_estilo():
     }
     div[class*="st-key-sidebar_cabecalho"] img {
         margin: 0 auto;
+    }
+    [data-testid="stSidebarHeader"] img, [data-testid="stLogo"] {
         cursor: pointer;
-    }
-    /* O título do menu é um st.button (leva ao Painel); aqui ele parece um título comum. */
-    div[class*="st-key-nav_titulo_inicio"] button {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 4px 6px !important;
-        justify-content: center !important;
-        font-weight: 700 !important;
-        color: inherit !important;
-    }
-    div[class*="st-key-nav_titulo_inicio"] button p {
-        font-size: 1.1rem !important;
-    }
-    div[class*="st-key-nav_titulo_inicio"] button:hover {
-        background: rgba(128, 128, 128, 0.12) !important;
     }
     .banner-arte {
         aspect-ratio: 1792 / 592;
@@ -1108,46 +1275,30 @@ def aplicar_estilo():
     /* Blocos invisíveis (st.iframe de 1 px com JS e o próprio <style>) ocupam uma vaga na lista
        vertical e aparecem como um risco no topo. display:none os tira da lista; o script continua
        rodando e o CSS continua valendo. */
-    .stElementContainer:has([data-testid="stIFrame"]),
+    .stElementContainer:has(iframe):not(:has(iframe[srcdoc*="caixa-visivel"])),
     .stElementContainer:has(style) {
         display: none;
     }
-    /* Botão Editar de cada tarefa alinhado à direita da linha. */
-    div[class*="st-key-edita_"], div[class*="st-key-altdata_"] {
-        align-items: flex-end;
+    /* Botão de ação destrutiva dos diálogos de confirmação: vermelho, como nos sistemas em geral. */
+    div[class*="st-key-dlg_perigo"] button {
+        background-color: #c62828;
+        border-color: #c62828;
+        color: #ffffff;
     }
-    div[role="tablist"] {
-        gap: 4px;
-        border-bottom: 1px solid rgba(128, 128, 128, 0.35);
-    }
-    div[role="tablist"] .react-aria-SelectionIndicator {
-        display: none;
-    }
-    div[data-testid="stTab"] {
-        background-color: rgba(128, 128, 128, 0.10);
-        border: 1px solid rgba(128, 128, 128, 0.30);
-        border-bottom: none;
-        border-radius: 10px 10px 0 0;
-        padding: 8px 16px;
-        margin-bottom: 0;
-    }
-    div[data-testid="stTab"]:hover {
-        background-color: rgba(46, 125, 50, 0.10);
-    }
-    div[data-testid="stTab"][aria-selected="true"] {
-        background-color: rgba(46, 125, 50, 0.14);
-        border-color: rgba(46, 125, 50, 0.55);
-        border-top: 3px solid #2e7d32;
-        font-weight: 600;
-    }
-    section[data-testid="stSidebar"] .stButton button {
-        min-height: 2.8rem;
-    }
-    section[data-testid="stSidebar"] .stButton button p {
-        font-size: 1.1rem;
+    div[class*="st-key-dlg_perigo"] button:hover {
+        background-color: #a71f1f;
+        border-color: #a71f1f;
+        color: #ffffff;
     }
     </style>
     """, unsafe_allow_html=True)
+
+
+def _como_pagina(funcao, u):
+    def pagina():
+        funcao(u)
+    pagina.__name__ = funcao.__name__
+    return pagina
 
 
 def main():
@@ -1156,6 +1307,7 @@ def main():
     aplicar_estilo()
     injetar_manifest_pwa()
     injetar_aviso_saida()
+    injetar_teclado_numerico()
     if "uid" not in st.session_state and not st.session_state.get("limpar_cookie"):
         retomar_sessao()
     if "uid" not in st.session_state:
@@ -1166,33 +1318,22 @@ def main():
     if st.session_state.get("cookie_novo"):
         _script_cookie(st.session_state.pop("cookie_novo"), DIAS_SESSAO)
     u = usuario()
+    if ARQUIVO_LOGO.exists():
+        st.logo(str(ARQUIVO_LOGO), size="large")
     injetar_clique_logo_inicio()
+    paginas = [st.Page(_como_pagina(funcao, u), title=nome, icon=icone, url_path=slug(nome),
+                       default=(i == 0))
+               for i, (nome, (funcao, icone)) in enumerate(PAGINAS.items())]
+    navegacao = st.navigation(paginas)
     with st.sidebar:
-        with st.container(key="sidebar_cabecalho"):
-            if ARQUIVO_LOGO.exists():
-                st.image(str(ARQUIVO_LOGO), width=64)
-            if st.button("Gestor de Equipe", key="nav_titulo_inicio", width="stretch"):
-                ir_para(next(iter(PAGINAS)))
-                st.rerun()
-        papel = ('<div title="Líder da equipe" style="font-size:1.2rem;">👑</div>' if u["lider"] else
-                 '<div title="Integrante" style="font-size:1.2rem;">🌱</div>')
-        st.markdown(
-            f'<div style="text-align:center; line-height:1.3;"><b>{html.escape(u["nome"])}</b>{papel}</div>',
-            unsafe_allow_html=True,
-        )
         st.divider()
-        pagina = st.session_state.setdefault("pagina", pagina_inicial())
-        st.query_params["pagina"] = slug(pagina)
-        for nome in PAGINAS:
-            if st.button(nome, key=f"menu_{nome}", width="stretch",
-                         type="primary" if nome == pagina else "tertiary"):
-                ir_para(nome)
-                st.rerun()
-        st.divider()
-        if st.button("Sair"):
+        st.markdown(f"**{u['nome']}**")
+        st.caption("Líder da equipe" if u["lider"] else "Integrante")
+        if st.button("Sair", icon=":material/logout:", type="tertiary"):
             encerrar_sessao()
             st.rerun()
-    PAGINAS[pagina](u)
+    mostrar_aviso()
+    navegacao.run()
 
 
 # Rodar com "python app.py" (ou o play do VS Code) abre o Streamlit sozinho.
