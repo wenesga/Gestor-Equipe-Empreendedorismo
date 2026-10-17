@@ -1376,6 +1376,12 @@ def aplicar_estilo():
             margin-left: auto;
         }
     }
+    /* Painel suspenso (menu ⋯): fundo mais claro que a página e sombra, para não se misturar a ela. */
+    [data-testid="stPopoverBody"] {
+        background-image: linear-gradient(rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.22));
+        border: 1px solid rgba(128, 128, 128, 0.55);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
     /* Botão de ação destrutiva dos diálogos de confirmação: vermelho, como nos sistemas em geral. */
     div[class*="st-key-dlg_perigo"] button {
         background-color: #c62828;
