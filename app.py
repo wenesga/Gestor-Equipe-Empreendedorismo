@@ -359,8 +359,8 @@ def tabela(df, html_cols=(), largas=(), numericas=(), destaque=None):
             f"{r[c] if c in html_cols else html.escape(str(r[c]))}</td>" for c in df.columns)
         linhas.append(f'<tr style="{fundo}">{cels}</tr>')
     st.markdown(
-        f'<table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">'
-        f"<thead><tr>{cab}</tr></thead><tbody>{''.join(linhas)}</tbody></table>",
+        f'<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">'
+        f"<thead><tr>{cab}</tr></thead><tbody>{''.join(linhas)}</tbody></table></div>",
         unsafe_allow_html=True)
 
 
@@ -585,11 +585,13 @@ def pg_equipe(u):
     st.subheader("Integrantes")
     m = q("SELECT id, nome, lider FROM membros WHERE ativo = 1 ORDER BY nome")
     colunas = [6, 2.5, 0.8]
-    h1, h2, _ = st.columns(colunas)
-    h1.caption("Integrante")
-    h2.caption("Papel")
+    with st.container(key="cab_tabela_equipe"):
+        h1, h2, _ = st.columns(colunas)
+        h1.caption("Integrante")
+        h2.caption("Papel")
     for _, r in m.iterrows():
-        c1, c2, c3 = st.columns(colunas, vertical_alignment="center")
+        with st.container(key=f"linha_icone_m{r['id']}"):
+            c1, c2, c3 = st.columns(colunas, vertical_alignment="center")
         c1.write(r["nome"])
         c2.write("Líder" if r["lider"] else "Integrante")
         if not u["lider"] or r["id"] == u["id"]:
@@ -697,7 +699,8 @@ def pg_cronograma(u):
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
-            col_data, _, _, col_acao, _ = st.columns(colunas, vertical_alignment="center")
+            with st.container(key=f"linha_icone_s{sem}"):
+                col_data, _, _, col_acao, _ = st.columns(colunas, vertical_alignment="center")
             col_data.caption(f"Começa em {br(prazo_semana)} · Prazo {br(efetivos[sem])}")
             if col_acao.button(":material/edit_calendar:", key=f"datas_{sem}", type="tertiary",
                                help="Alterar datas da semana", width="stretch"):
@@ -706,12 +709,14 @@ def pg_cronograma(u):
             if tarefas.empty:
                 st.caption("Nenhuma tarefa nesta semana.")
             else:
-                h1, h2, h3, _, _ = st.columns(colunas)
-                h1.caption("Tarefa")
-                h2.caption("Responsável")
-                h3.caption("Status")
+                with st.container(key=f"cab_tabela_{sem}"):
+                    h1, h2, h3, _, _ = st.columns(colunas)
+                    h1.caption("Tarefa")
+                    h2.caption("Responsável")
+                    h3.caption("Status")
             for _, r in tarefas.iterrows():
-                c1, c2, c3, c4, c5 = st.columns(colunas, vertical_alignment="center")
+                with st.container(key=f"linha_tarefa_{r['id']}"):
+                    c1, c2, c3, c4, c5 = st.columns(colunas, vertical_alignment="center")
                 c1.write(r["titulo"])
                 ids = [None] + list(nomes)
                 atual = r["responsavel_id"]
@@ -796,7 +801,8 @@ def pg_contribuicoes(u):
         st.info("Nenhuma contribuição registrada ainda.")
     for _, r in df.iterrows():
         with st.container(border=True):
-            topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
+            with st.container(key=f"linha_icone_c{r['id']}"):
+                topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
             quem = f" · {r['nome']}" if ver_todos else ""
             topo.markdown(f"**{br(r['data'])}** · Semana {r['semana']} · {r['tipo']} · "
                           f"{r['horas']:g} h{quem}")
@@ -872,7 +878,8 @@ def pg_diario(u):
         st.info("Nenhum registro no diário ainda.")
     for _, r in df.iterrows():
         with st.container(border=True):
-            topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
+            with st.container(key=f"linha_icone_d{r['id']}"):
+                topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
             local = f" · {r['local']}" if _txt(r["local"]) else ""
             topo.markdown(f"**{br(r['data'])}** · {r['tipo']}{local}")
             if b1.button(ICO_EDITAR, key=f"ed_{r['id']}", type="tertiary", help="Editar", width="stretch"):
@@ -1002,6 +1009,12 @@ def caixa_copiar(rotulo, texto, linhas):
             document.body.style.fontFamily = estilo.fontFamily;
             document.querySelector('.rotulo').textContent = {json.dumps(rotulo)};
             document.getElementById('texto').textContent = {json.dumps(texto)};
+            function ajustar() {{
+                const h = document.querySelector('.topo').offsetHeight + 6 + document.getElementById('texto').offsetHeight + 4;
+                if (window.frameElement) {{ window.frameElement.style.height = h + 'px'; }}
+            }}
+            ajustar();
+            window.addEventListener('resize', ajustar);
             document.getElementById('copiar').addEventListener('click', function () {{
                 const botao = this;
                 const area = document.createElement('textarea');
@@ -1298,6 +1311,55 @@ def aplicar_estilo():
     }
     [data-testid="stSidebarNavLink"]:hover {
         background-color: rgba(46, 125, 50, 0.14);
+    }
+    /* Celular: linhas com ícones ficam em uma só linha e a linha da tarefa vira um cartão compacto. */
+    @media (max-width: 640px) {
+        .banner-arte {
+            min-height: 9.5rem;
+        }
+        div[class*="st-key-linha_icone_"] [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.25rem !important;
+        }
+        div[class*="st-key-linha_icone_"] [data-testid="stColumn"] {
+            min-width: 0 !important;
+            flex: 0 0 auto !important;
+            width: auto !important;
+        }
+        div[class*="st-key-linha_icone_"] [data-testid="stColumn"]:first-child {
+            flex: 1 1 0 !important;
+        }
+        div[class*="st-key-linha_icone_m"] [data-testid="stColumn"]:last-child {
+            flex: 0 0 3rem !important;
+        }
+        div[class*="st-key-linha_icone_s"] [data-testid="stColumn"]:nth-child(2),
+        div[class*="st-key-linha_icone_s"] [data-testid="stColumn"]:nth-child(3),
+        div[class*="st-key-linha_icone_s"] [data-testid="stColumn"]:nth-child(5) {
+            display: none;
+        }
+        div[class*="st-key-cab_tabela_"] {
+            display: none;
+        }
+        div[class*="st-key-linha_tarefa_"] [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(128, 128, 128, 0.25);
+        }
+        div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"] {
+            min-width: 0 !important;
+            width: auto !important;
+            flex: 1 1 calc(50% - 0.25rem) !important;
+        }
+        div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"]:first-child {
+            flex: 1 1 100% !important;
+        }
+        div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"]:nth-child(n+4) {
+            flex: 0 0 2.6rem !important;
+        }
+        div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"]:nth-child(4) {
+            margin-left: auto;
+        }
     }
     /* Botão de ação destrutiva dos diálogos de confirmação: vermelho, como nos sistemas em geral. */
     div[class*="st-key-dlg_perigo"] button {
