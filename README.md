@@ -23,11 +23,11 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 ## ✨ O que ele faz
 
 - 📊 **Painel**: horas e registros por integrante, tarefas por status, pendências com início e prazo, barra de progresso da semana e aviso de quem está há mais de 14 dias sem registrar nada.
-- 👥 **Equipe**: nome da equipe, lista de integrantes e ferramentas do líder (código de entrada, redefinir PIN, passar a liderança, remover ou excluir integrante).
-- 🗓️ **Cronograma**: 10 semanas com prazo, responsável e status de cada tarefa.
-- 📝 **Minhas contribuições**: data, tipo, horas, descrição e evidência (link ou arquivo; as imagens aparecem em prévia).
-- 🌱 **Diário de campo**: visitas, entrevistas e observações na comunidade.
-- 📮 **Entrega da semana**: monta o texto da postagem do fórum (equipe, integrantes, contrato, comunidade, justificativa, contato, Diário de campo, tarefas e contribuições da semana) pronto para copiar e colar.
+- 👥 **Equipe**: nome da equipe e lista de integrantes. O líder tem um menu **⋯** em cada integrante (redefinir PIN, passar a liderança, remover ou excluir) e define o código de entrada.
+- 🗓️ **Cronograma**: 10 semanas com início, prazo, responsável e status de cada tarefa. Editar tarefa, adicionar tarefa e alterar datas abrem em janela própria.
+- 📝 **Minhas contribuições**: data, tipo, horas, descrição e evidência (link ou arquivo; as imagens aparecem em prévia). Filtro Minhas / Da equipe; editar e excluir em cada registro.
+- 🌱 **Diário de campo**: visitas, entrevistas e observações na comunidade, com editar e excluir em cada registro.
+- 📮 **Entrega da semana**: monta o texto da postagem do fórum (equipe, integrantes, contrato, comunidade, justificativa, contato, Diário de campo, tarefas e contribuições da semana), com botão **Copiar**.
 - 📄 **Relatório em PDF**: contribuições do integrante, com evidência e cabeçalho institucional.
 - 📱 **App instalável**: funciona no navegador e pode ser instalado no celular ou no computador.
 
@@ -50,7 +50,7 @@ Sistema web simples para uma equipe de estudantes organizar um projeto de empree
 ## 🔑 Como entrar
 
 - 🚪 **Primeiro acesso (banco vazio)**: quem abrir primeiro cria a equipe, vira o líder 👑 e define o **código da equipe**.
-- ➕ **Demais integrantes**: aba "Sou novo no grupo", com nome, código da equipe e um PIN de 4 dígitos.
+- ➕ **Demais integrantes**: link "Sou novo no grupo", com nome, código da equipe e um PIN de 4 dígitos.
 - 🔁 **Depois**: escolher o nome na lista e digitar o PIN. O login fica lembrado por 30 dias.
 
 ⚠️ *O PIN evita acesso por engano, mas não é segurança forte. Não registre informações sensíveis de moradores.*
@@ -77,6 +77,17 @@ python seed_exemplo.py --limpar   # apaga a pasta data/ e recria os exemplos
 ```
 
 Para recomeçar do zero, apague a pasta `data/`.
+
+## 🧭 Padrões de interface
+
+Cada função usa o elemento que sistemas profissionais usam para ela:
+
+- 🧭 **Navegação**: menu lateral nativo (`st.navigation`), com ícones, item ativo e um endereço por tela.
+- 🪟 **Criar e editar**: janelas (`st.dialog`) com Cancelar e Salvar.
+- ⚠️ **Excluir ou ação sem volta**: janela de confirmação, com botão vermelho.
+- 🔎 **Filtros e seletores**: controle segmentado (`st.segmented_control`).
+- ✏️ **Ações por linha ou cartão**: ícones de editar e excluir, sempre à direita.
+- 🔔 **Sucesso**: notificação rápida (`st.toast`); erros aparecem dentro do formulário ou da janela.
 
 ## 🗂️ Estrutura
 
