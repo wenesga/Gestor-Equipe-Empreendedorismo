@@ -693,7 +693,7 @@ def pg_cronograma(u):
     t = q("SELECT * FROM tarefas ORDER BY semana, prazo, id")
     datas = datas_semanas()
     efetivos = prazos_efetivos()
-    colunas = [6, 2.2, 2.2, 0.8, 0.8]
+    colunas = [5, 2.4, 2.8, 0.8, 0.8]
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
         with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
@@ -1225,6 +1225,10 @@ def injetar_aviso_saida():
 def aplicar_estilo():
     st.markdown("""
     <style>
+    /* Tamanho base 10% maior que o padrão; as fontes do Streamlit são em rem e acompanham. */
+    html {
+        font-size: 17.6px;
+    }
     .stMainBlockContainer {
         max-width: 870px;
         padding-left: 2rem;
@@ -1278,6 +1282,22 @@ def aplicar_estilo():
     .stElementContainer:has(iframe):not(:has(iframe[srcdoc*="caixa-visivel"])),
     .stElementContainer:has(style) {
         display: none;
+    }
+    /* Menu lateral: itens maiores e o da página atual em verde. */
+    [data-testid="stSidebarNavLink"] {
+        min-height: 2.75rem;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+    [data-testid="stSidebarNavLink"] span {
+        font-size: 1rem;
+    }
+    [data-testid="stSidebarNavLink"][aria-current="page"] {
+        background-color: rgba(46, 125, 50, 0.28);
+        font-weight: 600;
+    }
+    [data-testid="stSidebarNavLink"]:hover {
+        background-color: rgba(46, 125, 50, 0.14);
     }
     /* Botão de ação destrutiva dos diálogos de confirmação: vermelho, como nos sistemas em geral. */
     div[class*="st-key-dlg_perigo"] button {
