@@ -555,8 +555,10 @@ def pg_painel(u):
         "Registros": c["registros"],
         "Horas": c["horas"].map(lambda h: f"{h:g}"),
         "Último registro": c["ultimo"].map(br),
-        "Situação": [selo(f"Sem registro há mais de {DIAS_ALERTA} dias", "rgba(198, 40, 40, 0.25)") if p
-                     else selo("Em dia", "rgba(46, 125, 50, 0.25)") for p in parado],
+        "Situação": [selo("Nenhum registro", "rgba(198, 40, 40, 0.25)") if nunca
+                     else selo(f"Sem registro há mais de {DIAS_ALERTA} dias", "rgba(198, 40, 40, 0.25)") if p
+                     else selo("Em dia", "rgba(46, 125, 50, 0.25)")
+                     for p, nunca in zip(parado, c["ultimo"].isna())],
     }), html_cols=("Situação",), numericas=("Registros", "Horas"))
     if not c.empty:
         grafico_horas(c)
