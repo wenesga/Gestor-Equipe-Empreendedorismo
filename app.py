@@ -512,7 +512,7 @@ def grafico_horas(c):
     df = c.rename(columns={"nome": "Integrante", "horas": "Horas"})
     base = alt.Chart(df).encode(
         y=alt.Y("Integrante:N", sort="-x", title=None,
-                axis=alt.Axis(domain=False, ticks=False, labelPadding=8, labelFontSize=13)),
+                axis=alt.Axis(domain=False, ticks=False, labelPadding=8, labelFontSize=13, labelLimit=0)),
         x=alt.X("Horas:Q", title=None, axis=None, scale=alt.Scale(domainMin=0)),
     )
     barras = base.mark_bar(size=14, cornerRadiusEnd=7, color="#3376cb")
