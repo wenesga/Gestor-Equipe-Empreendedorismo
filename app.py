@@ -352,7 +352,10 @@ def tabela(df, html_cols=(), largas=(), numericas=(), destaque=None):
         f"{html.escape(str(c))}</th>" for c in df.columns)
     linhas = []
     for _, r in df.iterrows():
-        fundo = "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;" if destaque and destaque(r) else ""
+        marca = destaque(r) if destaque else None
+        fundo = {"vermelho": "background-color: rgba(198, 40, 40, 0.30); font-weight: 600;",
+                 "verde": "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;"}.get(
+                     "verde" if marca is True else marca, "")
         cels = "".join(
             f'<td style="{celula}{"" if c in largas else " white-space: nowrap;"}'
             f'{" text-align: right;" if c in numericas else ""}">'
@@ -576,8 +579,12 @@ def pg_painel(u):
         pend["Início"] = pend["Início"].map(lambda d: br(d)[:5])
         pend["Responsável"] = pend["Responsável"].map(nome_curto)
         pend = pend.rename(columns={"Semana": "Sem."})
-        tabela(pend, largas=("Tarefa",), destaque=lambda r: r["Sem."] == atual)
-        st.caption("Em verde: a semana em vigor.")
+        hoje = date.today().isoformat()
+        atrasadas = {sem for sem in pend["Sem."] if efetivos.get(int(sem), "9999") < hoje}
+        tabela(pend, largas=("Tarefa",),
+               destaque=lambda r: "vermelho" if r["Sem."] in atrasadas
+               else "verde" if r["Sem."] == atual else None)
+        st.caption("Em verde: a semana em vigor. Em vermelho: prazo vencido.")
 
 
 def pg_equipe(u):
