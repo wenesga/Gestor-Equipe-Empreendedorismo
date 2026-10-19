@@ -527,16 +527,26 @@ def grafico_horas(c):
 def pg_painel(u):
     mostrar_banner()
     st.header("Painel")
+    st.caption("Resumo da equipe, andamento da semana e pendências.")
     atual = semana_atual()
     total = len(CRONOGRAMA)
     falta = total - atual
     resto = ("última semana" if falta == 0 else
              f"falta {falta} semana" if falta == 1 else f"faltam {falta} semanas")
-    st.progress(atual / total, text=f"Semana {atual} de {total} · {resto}")
+    with st.container(border=True):
+        st.markdown(f"**Semana {atual} de {total}** · {resto.capitalize()}")
+        st.progress(atual / total)
     c = q("""SELECT m.nome, COUNT(c.id) AS registros, COALESCE(SUM(c.horas),0) AS horas,
                     MAX(c.data) AS ultimo
              FROM membros m LEFT JOIN contribuicoes c ON c.membro_id = m.id
              WHERE m.ativo = 1 GROUP BY m.id ORDER BY m.nome""")
+    t = q("SELECT status, COUNT(*) AS n FROM tarefas GROUP BY status")
+    cartoes = [("Registros", int(c["registros"].sum())), ("Horas", f"{float(c['horas'].sum()):g}")]
+    cartoes += [(s, int(t.loc[t["status"] == s, "n"].sum())) for s in STATUS]
+    with st.container(key="painel_cartoes"):
+        for col, (rotulo, valor) in zip(st.columns(len(cartoes)), cartoes):
+            with col.container(border=True):
+                st.metric(rotulo, valor)
     st.subheader("Contribuições por integrante")
     limite = (date.today() - pd.Timedelta(days=DIAS_ALERTA)).isoformat()
     parado = c["ultimo"].isna() | (c["ultimo"] < limite)
@@ -550,13 +560,6 @@ def pg_painel(u):
     }), html_cols=("Situação",), numericas=("Registros", "Horas"))
     if not c.empty:
         grafico_horas(c)
-    t = q("SELECT status, COUNT(*) AS n FROM tarefas GROUP BY status")
-    st.subheader("Tarefas")
-    with st.container(key="linha_metricas"):
-        cols = st.columns(3)
-    for col, s in zip(cols, STATUS):
-        n = int(t.loc[t["status"] == s, "n"].sum())
-        col.metric(s, n)
     pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, t.titulo AS Tarefa,
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t JOIN semanas s ON s.semana = t.semana
@@ -1338,15 +1341,22 @@ def aplicar_estilo():
         div[class*="st-key-linha_icone_s"] [data-testid="stColumn"]:nth-child(5) {
             display: none;
         }
-        div[class*="st-key-linha_metricas"] [data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
+        div[class*="st-key-painel_cartoes"] [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
             gap: 0.5rem !important;
         }
-        div[class*="st-key-linha_metricas"] [data-testid="stColumn"] {
+        div[class*="st-key-painel_cartoes"] [data-testid="stColumn"] {
             min-width: 0 !important;
-            flex: 1 1 0 !important;
+            width: auto !important;
+            flex: 1 1 calc(33.33% - 0.4rem) !important;
         }
-        div[class*="st-key-linha_metricas"] [data-testid="stMetricLabel"] * {
+        div[class*="st-key-painel_cartoes"] [data-testid="stColumn"]:nth-child(-n+2) {
+            flex: 1 1 calc(50% - 0.3rem) !important;
+        }
+        div[class*="st-key-painel_cartoes"] [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"]) {
+            padding: 0.6rem 0.45rem !important;
+        }
+        div[class*="st-key-painel_cartoes"] [data-testid="stMetricLabel"] * {
             white-space: nowrap !important;
             overflow: visible !important;
             text-overflow: clip !important;
