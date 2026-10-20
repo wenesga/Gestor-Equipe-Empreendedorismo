@@ -813,7 +813,7 @@ def pg_contribuicoes(u):
     if df.empty:
         st.info("Nenhuma contribuição registrada ainda.")
     for _, r in df.iterrows():
-        with st.container(border=True):
+        with st.container(border=True, key=f"cartao_c{r['id']}"):
             with st.container(key=f"linha_icone_c{r['id']}"):
                 topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
             quem = f" · {r['nome']}" if ver_todos else ""
@@ -890,7 +890,7 @@ def pg_diario(u):
     if df.empty:
         st.info("Nenhum registro no diário ainda.")
     for _, r in df.iterrows():
-        with st.container(border=True):
+        with st.container(border=True, key=f"cartao_d{r['id']}"):
             with st.container(key=f"linha_icone_d{r['id']}"):
                 topo, b1, b2 = st.columns([10, 1, 1], vertical_alignment="center")
             local = f" · {r['local']}" if _txt(r["local"]) else ""
@@ -1394,6 +1394,10 @@ def aplicar_estilo():
         div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"]:nth-child(4) {
             margin-left: auto;
         }
+    }
+    /* Cartões de contribuição e de diário: fundo levemente destacado da página. */
+    div[class*="st-key-cartao_"] {
+        background-color: rgba(128, 128, 128, 0.10);
     }
     /* Painel suspenso (menu ⋯): fundo mais claro que a página e sombra, para não se misturar a ela. */
     [data-testid="stPopoverBody"] {
