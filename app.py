@@ -1397,7 +1397,9 @@ def aplicar_estilo():
     }
     /* Cartões de contribuição e de diário: fundo levemente destacado da página. */
     div[class*="st-key-cartao_"] {
-        background-color: rgba(128, 128, 128, 0.10);
+        background-color: rgba(128, 128, 128, 0.20);
+        border: 1px solid rgba(128, 128, 128, 0.5);
+        border-left: 5px solid #2e7d32;
     }
     /* Painel suspenso (menu ⋯): fundo mais claro que a página e sombra, para não se misturar a ela. */
     [data-testid="stPopoverBody"] {
