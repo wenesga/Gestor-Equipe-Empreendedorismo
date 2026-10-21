@@ -709,9 +709,26 @@ def pg_cronograma(u):
     datas = datas_semanas()
     efetivos = prazos_efetivos()
     colunas = [5, 2.4, 2.8, 0.8, 0.8]
+    st.caption("Verde: semana em vigor. Vermelho: prazo vencido com tarefa pendente. "
+               "✔ Todas as tarefas concluídas.")
+    hoje = date.today().isoformat()
     for sem, _, _ in CRONOGRAMA:
         prazo_semana = datas[sem]
-        with st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual())):
+        da_semana = t[t["semana"] == sem]
+        concluida = (not da_semana.empty) and bool((da_semana["status"] == "Concluída").all())
+        if sem == semana_atual():
+            estado = "vigor"
+        elif not concluida and efetivos[sem] < hoje:
+            estado = "atraso"
+        elif concluida:
+            estado = "ok"
+        else:
+            estado = "futura"
+        icone = ":material/check_circle:" if concluida else (
+            ":material/warning:" if estado == "atraso" else
+            ":material/play_circle:" if estado == "vigor" else ":material/schedule:")
+        with st.container(key=f"semana_{estado}_{sem}"),                 st.expander(f"Semana {sem} · {br(prazo_semana)}", expanded=(sem == semana_atual()),
+                            icon=icone):
             with st.container(key=f"linha_icone_s{sem}"):
                 col_data, _, _, col_acao, _ = st.columns(colunas, vertical_alignment="center")
             col_data.caption(f"Começa em {br(prazo_semana)} · Prazo {br(efetivos[sem])}")
@@ -1394,6 +1411,22 @@ def aplicar_estilo():
         div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"]:nth-child(4) {
             margin-left: auto;
         }
+    }
+    /* Cronograma: cada semana com a cor do seu estado (em vigor, atrasada, concluída ou futura). */
+    div[class*="st-key-semana_"] [data-testid="stExpander"] {
+        border-left: 5px solid rgba(128, 128, 128, 0.55);
+    }
+    div[class*="st-key-semana_vigor_"] [data-testid="stExpander"] {
+        border-left-color: #2e7d32;
+        background-color: rgba(46, 125, 50, 0.16);
+    }
+    div[class*="st-key-semana_atraso_"] [data-testid="stExpander"] {
+        border-left-color: #c62828;
+        background-color: rgba(198, 40, 40, 0.16);
+    }
+    div[class*="st-key-semana_ok_"] [data-testid="stExpander"] {
+        border-left-color: rgba(46, 125, 50, 0.6);
+        background-color: rgba(46, 125, 50, 0.06);
     }
     /* Cartões de contribuição e de diário: fundo levemente destacado da página. */
     div[class*="st-key-cartao_"] {
