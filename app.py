@@ -345,25 +345,27 @@ def selo(texto, cor):
 
 def tabela(df, html_cols=(), largas=(), numericas=(), destaque=None):
     """Tabela de leitura simples (cabeçalho, linhas, colunas numéricas à direita), sem cara de planilha."""
-    celula = "padding: 8px 10px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;"
+    celula = "padding: 9px 12px; border-bottom: 1px solid rgba(128,128,128,0.25); vertical-align: top;"
     cab = "".join(
-        f'<th style="text-align: {"right" if c in numericas else "left"}; padding: 8px 10px; '
-        f'border-bottom: 1px solid rgba(128,128,128,0.4); opacity: 0.7; font-weight: 500;">'
+        f'<th style="text-align: {"right" if c in numericas else "left"}; padding: 10px 12px; '
+        f'background-color: rgba(46, 125, 50, 0.28); border-bottom: 2px solid #2e7d32; font-weight: 700;">'
         f"{html.escape(str(c))}</th>" for c in df.columns)
     linhas = []
-    for _, r in df.iterrows():
+    for i, (_, r) in enumerate(df.iterrows()):
         marca = destaque(r) if destaque else None
+        zebra = "background-color: rgba(128, 128, 128, 0.12);" if i % 2 else ""
         fundo = {"vermelho": "background-color: rgba(198, 40, 40, 0.30); font-weight: 600;",
                  "verde": "background-color: rgba(46, 125, 50, 0.35); font-weight: 600;"}.get(
-                     "verde" if marca is True else marca, "")
+                     "verde" if marca is True else marca, zebra)
         cels = "".join(
             f'<td style="{celula}{"" if c in largas else " white-space: nowrap;"}'
             f'{" text-align: right;" if c in numericas else ""}">'
             f"{r[c] if c in html_cols else html.escape(str(r[c]))}</td>" for c in df.columns)
         linhas.append(f'<tr style="{fundo}">{cels}</tr>')
     st.markdown(
+        f'<div style="border: 1px solid rgba(128,128,128,0.5); border-radius: 10px; overflow: hidden;">'
         f'<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">'
-        f"<thead><tr>{cab}</tr></thead><tbody>{''.join(linhas)}</tbody></table></div>",
+        f"<thead><tr>{cab}</tr></thead><tbody>{''.join(linhas)}</tbody></table></div></div>",
         unsafe_allow_html=True)
 
 
@@ -536,7 +538,7 @@ def pg_painel(u):
     falta = total - atual
     resto = ("última semana" if falta == 0 else
              f"falta {falta} semana" if falta == 1 else f"faltam {falta} semanas")
-    with st.container(border=True):
+    with st.container(border=True, key="painel_semana"):
         st.markdown(f"**Semana {atual} de {total}** · {resto.capitalize()}")
         st.progress(atual / total)
     c = q("""SELECT m.nome, COUNT(c.id) AS registros, COALESCE(SUM(c.horas),0) AS horas,
@@ -546,9 +548,10 @@ def pg_painel(u):
     t = q("SELECT status, COUNT(*) AS n FROM tarefas GROUP BY status")
     cartoes = [("Registros", int(c["registros"].sum())), ("Horas", f"{float(c['horas'].sum()):g}")]
     cartoes += [(s, int(t.loc[t["status"] == s, "n"].sum())) for s in STATUS]
+    tipos = ["registros", "horas", "pendente", "andamento", "concluida"]
     with st.container(key="painel_cartoes"):
-        for col, (rotulo, valor) in zip(st.columns(len(cartoes)), cartoes):
-            with col.container(border=True):
+        for col, tipo, (rotulo, valor) in zip(st.columns(len(cartoes)), tipos, cartoes):
+            with col.container(border=True, key=f"painel_cartao_{tipo}"):
                 st.metric(rotulo, valor)
     st.subheader("Contribuições por integrante")
     limite = (date.today() - pd.Timedelta(days=DIAS_ALERTA)).isoformat()
@@ -564,7 +567,8 @@ def pg_painel(u):
                      for p, nunca in zip(parado, c["ultimo"].isna())],
     }), html_cols=("Situação",), numericas=("Registros", "Horas"))
     if not c.empty:
-        grafico_horas(c)
+        with st.container(border=True, key="painel_grafico"):
+            grafico_horas(c)
     pend = q("""SELECT t.semana AS Semana, s.inicio AS Início, t.titulo AS Tarefa,
                        COALESCE(m.nome, '-') AS Responsável, t.status AS Status
                 FROM tarefas t JOIN semanas s ON s.semana = t.semana
@@ -598,36 +602,37 @@ def pg_equipe(u):
     st.subheader("Integrantes")
     m = q("SELECT id, nome, lider FROM membros WHERE ativo = 1 ORDER BY nome")
     colunas = [6, 2.5, 0.8]
-    with st.container(key="cab_tabela_equipe"):
-        h1, h2, _ = st.columns(colunas)
-        h1.caption("Integrante")
-        h2.caption("Papel")
-    for _, r in m.iterrows():
-        with st.container(key=f"linha_icone_m{r['id']}"):
-            c1, c2, c3 = st.columns(colunas, vertical_alignment="center")
-        c1.write(r["nome"])
-        c2.write("Líder" if r["lider"] else "Integrante")
-        if not u["lider"] or r["id"] == u["id"]:
-            continue
-        mid, nome_alvo = int(r["id"]), r["nome"]
-        with c3.popover(":material/more_horiz:", help="Ações", width="stretch"):
-            if st.button("Redefinir PIN", key=f"pin_{mid}", type="tertiary", width="stretch"):
-                dlg_redefinir_pin(mid, nome_alvo)
-            if st.button("Passar a liderança", key=f"lid_{mid}", type="tertiary", width="stretch"):
-                confirmar_acao(f"Passar a liderança da equipe para **{nome_alvo}**? "
-                               "Você deixa de ser líder.", "Passar liderança",
-                               "UPDATE membros SET lider = (id = ?) WHERE ativo = 1", (mid,),
-                               f"{nome_alvo} agora é o líder.", perigoso=False)
-            if st.button("Remover da equipe", key=f"rem_{mid}", type="tertiary", width="stretch"):
-                confirmar_acao(f"Remover **{nome_alvo}** da equipe? O acesso é desativado, "
-                               "mas os registros que a pessoa já fez continuam.", "Remover",
-                               "UPDATE membros SET ativo = 0 WHERE id = ?", (mid,),
-                               f"{nome_alvo} foi removido da equipe.")
-            if registros_do_membro(mid) == 0 and st.button(
-                    "Excluir definitivamente", key=f"del_{mid}", type="tertiary", width="stretch"):
-                confirmar_acao(f"Excluir **{nome_alvo}** definitivamente? Esta ação não pode ser desfeita.",
-                               "Excluir", "DELETE FROM membros WHERE id = ?", (mid,),
-                               f"{nome_alvo} foi excluído.")
+    with st.container(border=True, key="painel_equipe"):
+        with st.container(key="cab_tabela_equipe"):
+            h1, h2, _ = st.columns(colunas)
+            h1.caption("Integrante")
+            h2.caption("Papel")
+        for _, r in m.iterrows():
+            with st.container(key=f"linha_icone_m{r['id']}"):
+                c1, c2, c3 = st.columns(colunas, vertical_alignment="center")
+            c1.write(r["nome"])
+            c2.write("Líder" if r["lider"] else "Integrante")
+            if not u["lider"] or r["id"] == u["id"]:
+                continue
+            mid, nome_alvo = int(r["id"]), r["nome"]
+            with c3.popover(":material/more_horiz:", help="Ações", width="stretch"):
+                if st.button("Redefinir PIN", key=f"pin_{mid}", type="tertiary", width="stretch"):
+                    dlg_redefinir_pin(mid, nome_alvo)
+                if st.button("Passar a liderança", key=f"lid_{mid}", type="tertiary", width="stretch"):
+                    confirmar_acao(f"Passar a liderança da equipe para **{nome_alvo}**? "
+                                   "Você deixa de ser líder.", "Passar liderança",
+                                   "UPDATE membros SET lider = (id = ?) WHERE ativo = 1", (mid,),
+                                   f"{nome_alvo} agora é o líder.", perigoso=False)
+                if st.button("Remover da equipe", key=f"rem_{mid}", type="tertiary", width="stretch"):
+                    confirmar_acao(f"Remover **{nome_alvo}** da equipe? O acesso é desativado, "
+                                   "mas os registros que a pessoa já fez continuam.", "Remover",
+                                   "UPDATE membros SET ativo = 0 WHERE id = ?", (mid,),
+                                   f"{nome_alvo} foi removido da equipe.")
+                if registros_do_membro(mid) == 0 and st.button(
+                        "Excluir definitivamente", key=f"del_{mid}", type="tertiary", width="stretch"):
+                    confirmar_acao(f"Excluir **{nome_alvo}** definitivamente? Esta ação não pode ser desfeita.",
+                                   "Excluir", "DELETE FROM membros WHERE id = ?", (mid,),
+                                   f"{nome_alvo} foi excluído.")
     if u["lider"]:
         st.subheader("Código da equipe")
         atual = q("SELECT codigo FROM equipe WHERE id = 1")["codigo"].iloc[0] or ""
@@ -1411,6 +1416,34 @@ def aplicar_estilo():
         div[class*="st-key-linha_tarefa_"] [data-testid="stColumn"]:nth-child(4) {
             margin-left: auto;
         }
+    }
+    /* Formulários em cartão. */
+    [data-testid="stForm"] {
+        background-color: rgba(128, 128, 128, 0.10);
+        border: 1px solid rgba(128, 128, 128, 0.4);
+        border-radius: 10px;
+    }
+    /* Painel: cada número com a sua cor. */
+    div[class*="st-key-painel_cartao_"] {
+        border-left: 5px solid var(--cor);
+        background-color: color-mix(in srgb, var(--cor) 16%, transparent);
+    }
+    div[class*="st-key-painel_cartao_registros"] { --cor: #5c6bc0; }
+    div[class*="st-key-painel_cartao_horas"] { --cor: #00897b; }
+    div[class*="st-key-painel_cartao_pendente"] { --cor: #f9a825; }
+    div[class*="st-key-painel_cartao_andamento"] { --cor: #1e88e5; }
+    div[class*="st-key-painel_cartao_concluida"] { --cor: #2e7d32; }
+    div[class*="st-key-painel_semana"] {
+        border-left: 5px solid #2e7d32;
+        background-color: rgba(46, 125, 50, 0.14);
+    }
+    div[class*="st-key-painel_grafico"], div[class*="st-key-painel_equipe"] {
+        background-color: rgba(128, 128, 128, 0.10);
+        border: 1px solid rgba(128, 128, 128, 0.45);
+    }
+    div[class*="st-key-linha_icone_m"] {
+        border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+        padding-bottom: 0.25rem;
     }
     /* Cronograma: cada semana com a cor do seu estado (em vigor, atrasada, concluída ou futura). */
     div[class*="st-key-semana_"] [data-testid="stExpander"] {
