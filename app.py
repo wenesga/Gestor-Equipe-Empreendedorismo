@@ -1423,6 +1423,11 @@ def aplicar_estilo():
         border: 1px solid rgba(128, 128, 128, 0.4);
         border-radius: 10px;
     }
+    /* Campos dentro dos formulários: borda própria, para não se misturarem ao fundo do formulário. */
+    [data-testid="stForm"] [data-testid$="RootElement"],
+    [data-testid="stForm"] [data-testid="stSelectbox"] [role="group"] {
+        border: 1px solid rgba(128, 128, 128, 0.5) !important;
+    }
     /* Painel: cada número com a sua cor. */
     div[class*="st-key-painel_cartao_"] {
         border-left: 5px solid var(--cor);
