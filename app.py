@@ -1349,8 +1349,14 @@ def aplicar_estilo():
     }
     /* Celular: linhas com ícones ficam em uma só linha e a linha da tarefa vira um cartão compacto. */
     @media (max-width: 640px) {
-        .banner-arte {
-            min-height: 9.5rem;
+        .banner-arte p.banner-titulo {
+            font-size: 14px !important;
+            max-width: 46%;
+        }
+        .banner-arte p.banner-subtitulo {
+            font-size: 9.5px !important;
+            margin-top: 4px;
+            max-width: 38%;
         }
         div[class*="st-key-linha_icone_"] [data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
