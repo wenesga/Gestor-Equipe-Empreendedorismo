@@ -1283,9 +1283,9 @@ def aplicar_estilo():
         padding-right: 2rem;
         margin-left: auto;
         margin-right: auto;
-        /* O Streamlit reserva 96px de padding-top por padrão para a barra flutuante. Como a barra é
-           baixa e o conteúdo já tem título, o espaço cai para 60px sem encostar nos ícones da barra. */
-        padding-top: 60px;
+        /* O Streamlit reserva 96px de padding-top por padrão para a barra flutuante. A barra tem 66px
+           com a fonte base ampliada, então 72px evitam que ela cubra o topo do conteúdo. */
+        padding-top: 72px;
     }
     /* Esconde só o botão "Deploy"; o menu "⋮" continua para trocar o tema. */
     [data-testid="stAppDeployButton"] {
@@ -1308,7 +1308,7 @@ def aplicar_estilo():
         aspect-ratio: 1792 / 592;
         background-size: cover;
         background-position: center;
-        border-radius: 16px;
+        border-radius: 8px;
         margin-bottom: 16px;
         padding: 0 5%;
         display: flex;
