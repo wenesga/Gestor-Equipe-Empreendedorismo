@@ -421,6 +421,9 @@ def tela_inicial():
                     _entrar_como(nome)
         return
     cadastro = st.session_state.get("tela_cadastro", False)
+    if modo_demonstracao():
+        st.info("Demonstração com uma equipe fictícia: escolha qualquer integrante e use o PIN **1234**. "
+                "Código da equipe: **exemplo26**.", icon=":material/science:")
     if not cadastro:
         with st.form("login"):
             nome = st.selectbox("Quem é você?", membros["nome"])
@@ -1506,9 +1509,20 @@ def _como_pagina(funcao, u):
     return pagina
 
 
+def modo_demonstracao():
+    """Instância pública de demonstração, ligada pelo segredo DEMO = true do Streamlit."""
+    try:
+        return bool(st.secrets.get("DEMO", False))
+    except Exception:
+        return False
+
+
 def main():
     st.set_page_config(page_title="Gestor de Equipe", page_icon=str(ARQUIVO_LOGO) if ARQUIVO_LOGO.exists() else "🤝", layout="wide")
     init_db()
+    # Na demonstração, banco vazio recebe a equipe fictícia do seed_exemplo.py
+    if modo_demonstracao() and q("SELECT id FROM membros").empty:
+        subprocess.run([sys.executable, str(Path(__file__).parent / "seed_exemplo.py")], check=False)
     aplicar_estilo()
     injetar_manifest_pwa()
     injetar_aviso_saida()
